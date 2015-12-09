@@ -6,7 +6,8 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([compare_neuron_with_spectrum/3]).
+-export([get_neuron_spectrum_distance/3]).
+-export([set_bmu/2]).
 
 
 %%Start a neuron server
@@ -39,14 +40,22 @@ init(Init_data) ->
 
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
-compare_neuron_with_spectrum(Server_name, Spectrum, Spectrum_metadata) ->
+get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
     gen_server:call(Server_name, {compare, Spectrum, Spectrum_metadata}).
 
-handle_call({compare, Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration]) ->
-    Reply = [Neuron_coordinates, 
-             Spectrum_metadata, 
-             vector_operations:vector_distance(Neuron_vector, Spectrum)
-            ],
-    {reply, Reply, [Neuron_coordinates, Neuron_vector, BMU, Iteration]}
+set_bmu(Server_name, New_BMU) ->
+    gen_server:call(Server_name, {set_bmu, New_BMU}).
+
+handle_call(
+    {compare, Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration]) ->
+        Reply = [Neuron_coordinates, 
+                 Spectrum_metadata, 
+                 vector_operations:vector_distance(Neuron_vector, Spectrum)
+                ],
+        {reply, Reply, [Neuron_coordinates, Neuron_vector, BMU, Iteration]}
+    ;
+handle_call(
+    {set_bmu, New_BMU}, _From, [Neuron_coordinates, Neuron_vector, _Old_BMU, Iteration]) ->
+        {reply, [Neuron_coordinates, Neuron_vector, New_BMU, Iteration]}
 .
 
