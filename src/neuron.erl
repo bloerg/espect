@@ -8,6 +8,10 @@
 -export([init/1]).
 -export([get_neuron_spectrum_distance/3]).
 -export([set_bmu/2]).
+-export([update_neuron/2]).
+
+%for testing, remove later
+-export([alpha/4, sigma/4, neighbourhood_function1/4]).
 
 
 %%Start a neuron server
@@ -46,6 +50,11 @@ get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
 set_bmu(Server_name, New_BMU) ->
     gen_server:call(Server_name, {set_bmu, New_BMU}).
 
+update_neuron(Server_name, BMU_spectrum) ->
+    gen_server:call(Server_name, {update_neuron, BMU_spectrum}).
+    
+    
+
 handle_call(
     {compare, Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration]) ->
         Reply = [Neuron_coordinates, 
@@ -56,6 +65,48 @@ handle_call(
     ;
 handle_call(
     {set_bmu, New_BMU}, _From, [Neuron_coordinates, Neuron_vector, _Old_BMU, Iteration]) ->
-        {reply, [Neuron_coordinates, Neuron_vector, New_BMU, Iteration]}
+        {reply, ok, [Neuron_coordinates, Neuron_vector, New_BMU, Iteration]}
+    ;
+
+handle_call(
+    {update_neuron, BMU_spectrum}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration]) ->
+        T_max = 200, %%Fixme: function to get T_max (should be in neuron state?)
+        {reply, ok, [Neuron_coordinates, 
+                 vector_operations:vector_sum(Neuron_vector,
+                    vector_operations:scalar_multiplication(
+                        neighbourhood_function1(Iteration, T_max, Neuron_vector, BMU_spectrum),
+                        vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
+                    )
+                 ),
+                 BMU, 
+                 Iteration + 1
+                ]
+        }
+
 .
 
+
+
+
+%% BMU-Update related functions
+alpha(T, T_max, Alpha_begin, Alpha_end) ->
+    Alpha_begin * math:pow(Alpha_end / Alpha_begin, T/T_max).
+
+sigma(T, T_max, Sigma_begin, Sigma_end) ->
+    Sigma_begin * math:pow(Sigma_end / Sigma_begin, T/T_max).
+
+neighbourhood_function1(T, T_max, Neuron, BMU_spectrum) ->
+    Sigma_begin = 1.0,
+    Sigma_end = 0.0625,
+    Alpha_begin = 0.25,
+    Alpha_end = 0.01,
+    alpha(T, T_max, Alpha_begin, Alpha_end) * 
+        math:exp(
+            -vector_operations:vector_distance(Neuron, BMU_spectrum) 
+            / (2 * math:pow(
+                            sigma(T, T_max, Sigma_begin, Sigma_end),
+                            2
+                            )
+            )
+        )
+.
