@@ -14,6 +14,6 @@ speed_test_compare_neuron_with_spectrum(Spectrum_width, Repetitions) ->
         [X || X <- lists:seq(1,Repetitions)]
     ),
     T2 = os:timestamp(),
-    erlang:display({debug, "time: ", timer:now_diff(T2, T1), ", ratio: ", Repetitions/timer:now_diff(T2,T1)*1000000})
+    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", compares per second: ", Repetitions/timer:now_diff(T2,T1)*1000000})
 .
  
