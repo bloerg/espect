@@ -40,9 +40,9 @@ init(Init_data) ->
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
 compare_neuron_with_spectrum(Server_name, Spectrum, Spectrum_metadata) ->
-    gen_server:call(Server_name, {Spectrum, Spectrum_metadata}).
+    gen_server:call(Server_name, {compare, Spectrum, Spectrum_metadata}).
 
-handle_call({Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration]) ->
+handle_call({compare, Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration]) ->
     Reply = [Neuron_coordinates, 
              Spectrum_metadata, 
              vector_operations:vector_distance(Neuron_vector, Spectrum)
