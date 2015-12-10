@@ -34,7 +34,7 @@ start_link(Number_of_workers,
         ]
     ).
 
-start(Server_name, Number_of_workers,
+start(Server_name, Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
         }
