@@ -73,23 +73,35 @@ init([Number_of_workers,
         10,
         10
     },
-    Neuron_coordinates = [1,2],
-    Neuron_vector = [1,2,3],
+    % make a list of {x,y} coordinate tuples for neurons
+    All_children_coordinates = [{Neuron_x, Neuron_y} || Neuron_x <- lists:seq(X_start, X_end), Neuron_y <- lists:seq(Y_start, Y_end)],
+    % if the length of the coordinate tuple list exceeds the maximum worker number for one supervisor,
+    % split the list and use one part for this supervisor and the other to start another supervisor (TODO!)
+    case length(All_children_coordinates) > Number_of_workers of
+        true -> 
+            {This_children_coordinates, _Rest_children_coordinates} = lists:split(Number_of_workers, All_children_coordinates);
+        false -> 
+            {This_children_coordinates, _Rest_children_coordinates} = {All_children_coordinates, []}
+    end,
     Child_specification_list = 
         [ 
-            {Worker_id, 
-                {neuron, start_link, [Neuron_coordinates, Neuron_vector, [], Iteration, Max_iteration]},
+            {Neuron_coordinates, 
+                {neuron, start_link, [Neuron_coordinates, spectrum_dispatcher:get_spectrum(), [], Iteration, Max_iteration]},
                 permanent,
                 10000,
                 worker,
                 [neuron]
             }
-        || Worker_id <- lists:seq(1, Number_of_workers)
+        || Neuron_coordinates <- This_children_coordinates
         ],
+    if length(All_children_coordinates) == 0 ->
+        Sub_supervisor_specification = []
+    end,
+
     {ok, 
         {
         Supervisor_specification, 
-        Child_specification_list
+        Child_specification_list ++ Sub_supervisor_specification
         }
     }.
 
