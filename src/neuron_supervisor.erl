@@ -79,9 +79,9 @@ init([Number_of_workers,
     % split the list and use one part for this supervisor and the other to start another supervisor (TODO!)
     case length(All_children_coordinates) > Number_of_workers of
         true -> 
-            {This_children_coordinates, _Rest_children_coordinates} = lists:split(Number_of_workers, All_children_coordinates);
+            {This_children_coordinates, Rest_children_coordinates} = lists:split(Number_of_workers, All_children_coordinates);
         false -> 
-            {This_children_coordinates, _Rest_children_coordinates} = {All_children_coordinates, []}
+            {This_children_coordinates, Rest_children_coordinates} = {All_children_coordinates, []}
     end,
     Child_specification_list = 
         [ 
@@ -94,8 +94,11 @@ init([Number_of_workers,
             }
         || Neuron_coordinates <- This_children_coordinates
         ],
-    if length(All_children_coordinates) == 0 ->
-        Sub_supervisor_specification = []
+    if 
+        length(Rest_children_coordinates) == 0 ->
+            Sub_supervisor_specification = [];
+        length(Rest_children_coordinates) > 0 ->
+            Sub_supervisor_specification = [] %%FIXME!
     end,
 
     {ok, 
