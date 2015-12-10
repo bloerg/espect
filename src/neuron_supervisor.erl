@@ -86,7 +86,7 @@ init([Number_of_workers,
     Child_specification_list = 
         [ 
             {Neuron_coordinates, 
-                {neuron, start_link, [Neuron_coordinates, spectrum_dispatcher:get_spectrum(), [], Iteration, Max_iteration]},
+                {neuron, start_link, [Neuron_coordinates, spectrum_dispatcher:get_spectrum(spectrum_dispatcher), [], Iteration, Max_iteration]},
                 permanent,
                 10000,
                 worker,
