@@ -5,19 +5,69 @@
 -export([force_stop/1]).
 
 
-start_link(Server_name, Number_of_workers, {child_specs, Iteration, Max_iteration}) ->
-    supervisor:start_link(Server_name, ?MODULE, [Number_of_workers, {child_specs, Iteration, Max_iteration}]).
+start_link(Server_name, Number_of_workers, 
+        {child_specs, Iteration, Max_iteration, 
+          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+        }
+    ) ->
+    supervisor:start_link(
+        Server_name, 
+        ?MODULE, 
+        [Number_of_workers, 
+            {child_specs, Iteration, Max_iteration, 
+                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+            }
+        ]
+    ).
 
-start_link(Number_of_workers, {child_specs, Iteration, Max_iteration}) ->
-    supervisor:start_link(?MODULE, [Number_of_workers, {child_specs, Iteration, Max_iteration}]).
+start_link(Number_of_workers, 
+        {child_specs, Iteration, Max_iteration, 
+          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+        }
+    ) ->
+    supervisor:start_link(
+        ?MODULE, 
+        [Number_of_workers, 
+            {child_specs, Iteration, Max_iteration, 
+                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+            }
+        ]
+    ).
 
-start(Server_name, Number_of_workers, {child_specs, Iteration, Max_iteration}) ->
-    supervisor:start_link(Server_name, ?MODULE, [Number_of_workers, {child_specs, Iteration, Max_iteration}]).
+start(Server_name, Number_of_workers,
+        {child_specs, Iteration, Max_iteration, 
+          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+        }
+    ) ->
+    supervisor:start(
+        Server_name, 
+        ?MODULE, 
+        [Number_of_workers, 
+            {child_specs, Iteration, Max_iteration, 
+                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+            }
+        ]
+    ).
 
-start(Number_of_workers, {child_specs, Iteration, Max_iteration}) ->
-    supervisor:start_link(?MODULE, [Number_of_workers, {child_specs, Iteration, Max_iteration}]).
+start(Number_of_workers, 
+        {child_specs, Iteration, Max_iteration, 
+          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+        }
+    ) ->
+    supervisor:start(
+        ?MODULE, 
+        [Number_of_workers, 
+            {child_specs, Iteration, Max_iteration, 
+                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+            }
+        ]
+    ).
 
-init([Number_of_workers, {child_specs, Iteration, Max_iteration}]) ->
+init([Number_of_workers, 
+        {child_specs, Iteration, Max_iteration, 
+            {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+        }
+    ]) ->
     Supervisor_specification = {
         one_for_one, 
         10,
