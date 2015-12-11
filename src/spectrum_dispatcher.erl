@@ -39,7 +39,19 @@ terminate(_Reason, _Spectrum_dispatcher_state) ->
 
 
 init([{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
-    {ok, [{random_sine, Spectrum_length}, Iteration, Max_iteration]}.
+    {ok, [{random_sine, Spectrum_length}, Iteration, Max_iteration]};
+
+init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteration])
+    when Start_index > 0 ->
+    {ok, [
+        { filesystem, Directory,
+          File_format,
+          spectrum_handling:provide_spectra_list(filesystem, Directory),
+          Start_index
+        }, 
+        Iteration, Max_iteration]
+    }
+.
 
 
 
@@ -53,7 +65,22 @@ get_spectrum(Server_name) ->
 handle_call(
     get_spectrum, _From, [{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
         Reply = spectrum_handling:read_spectrum_from(random_sine, Spectrum_length),
-        {reply, Reply, [{random_sine, Spectrum_length}, Iteration, Max_iteration]}
+        {reply, Reply, [{random_sine, Spectrum_length}, Iteration, Max_iteration]};
+handle_call(
+    get_spectrum, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+        Reply = spectrum_handling:read_spectrum_from(
+                    filesystem, 
+                    string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
+                    File_format
+        ),
+        {reply, Reply, [{filesystem, Directory, File_format, Spectra_file_list, 
+                            case Spec_list_index == length(Spectra_file_list) of
+                                true -> 1; %TODO: should trigger an iteration Step update
+                                false -> Spec_list_index +1 
+                            end
+                        }, Iteration, Max_iteration
+                        ]}
+
 .
 
 
