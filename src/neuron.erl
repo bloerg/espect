@@ -83,7 +83,7 @@ handle_call(
                         vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
                     )
                  ),
-                 BMU, 
+                 BMU,
                  Iteration2,                
                  Max_iteration
                 ]
