@@ -79,8 +79,7 @@ handle_call(
                                 false -> Spec_list_index +1 
                             end
                         }, Iteration, Max_iteration
-                        ]}
-
-.
+                        ]
+        }.
 
 
