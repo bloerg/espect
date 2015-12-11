@@ -80,8 +80,6 @@ init([Number_of_workers,
         10
     },
     % make a list of {x,y} coordinate tuples for neurons
-    
-    %~ All_children_coordinates = [{Neuron_x, Neuron_y} || Neuron_x <- lists:seq(X_start, X_end), Neuron_y <- lists:seq(Y_start, Y_end)],
     Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers)],
     Child_specification_list = 
         [ 
