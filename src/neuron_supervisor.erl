@@ -3,11 +3,12 @@
 -export([start_link/2, start_link/3, start/2, start/3]).
 -export([init/1]).
 -export([force_stop/1]).
+-export([get_x_y_from_sequence/2]).
 
 
 start_link(Server_name, Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ) ->
     supervisor:start_link(
@@ -15,28 +16,28 @@ start_link(Server_name, Number_of_workers,
         ?MODULE, 
         [Number_of_workers, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
 
 start_link(Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ) ->
     supervisor:start_link(
         ?MODULE, 
         [Number_of_workers, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
 
 start(Server_name, Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ) ->
     supervisor:start(
@@ -44,28 +45,33 @@ start(Server_name, Number_of_workers,
         ?MODULE, 
         [Number_of_workers, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
 
 start(Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ) ->
     supervisor:start(
         ?MODULE, 
         [Number_of_workers, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
+    
+
+
+get_x_y_from_sequence(X_max, Sequence_number) ->
+    {Sequence_number rem X_max, Sequence_number div X_max}.
 
 init([Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
-            {neuron_coordinate_range, X_start, X_end, Y_start, Y_end}
+            {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ]) ->
     Supervisor_specification = {
@@ -74,15 +80,9 @@ init([Number_of_workers,
         10
     },
     % make a list of {x,y} coordinate tuples for neurons
-    All_children_coordinates = [{Neuron_x, Neuron_y} || Neuron_x <- lists:seq(X_start, X_end), Neuron_y <- lists:seq(Y_start, Y_end)],
-    % if the length of the coordinate tuple list exceeds the maximum worker number for one supervisor,
-    % split the list and use one part for this supervisor and the other to start another supervisor (TODO!)
-    case length(All_children_coordinates) > Number_of_workers of
-        true -> 
-            {This_children_coordinates, Rest_children_coordinates} = lists:split(Number_of_workers, All_children_coordinates);
-        false -> 
-            {This_children_coordinates, Rest_children_coordinates} = {All_children_coordinates, []}
-    end,
+    
+    %~ All_children_coordinates = [{Neuron_x, Neuron_y} || Neuron_x <- lists:seq(X_start, X_end), Neuron_y <- lists:seq(Y_start, Y_end)],
+    Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers)],
     Child_specification_list = 
         [ 
             {Neuron_coordinates, 
@@ -92,13 +92,27 @@ init([Number_of_workers,
                 worker,
                 [neuron]
             }
-        || Neuron_coordinates <- This_children_coordinates
+        || Neuron_coordinates <- Children_coordinates
         ],
-    if 
-        length(Rest_children_coordinates) == 0 ->
-            Sub_supervisor_specification = [];
-        length(Rest_children_coordinates) > 0 ->
-            Sub_supervisor_specification = [] %%FIXME!
+    case Next_free_neuron + Number_of_workers < X_max * Y_max of
+        true -> 
+            Sub_supervisor_specification = [
+                {Next_free_neuron + Number_of_workers,
+                    {neuron_supervisor, start_link, 
+                        [Number_of_workers, 
+                            {child_specs, Iteration, Max_iteration, 
+                              {neuron_coordinates, X_max, Y_max, min(Next_free_neuron + Number_of_workers, X_max * Y_max)}
+                            }
+                        ]
+                    },
+                permanent,
+                10000,
+                supervisor,
+                [neuron_supervisor]
+                }
+            ];
+        false -> 
+            Sub_supervisor_specification = []
     end,
 
     {ok, 
