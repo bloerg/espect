@@ -67,9 +67,10 @@ start(Number_of_workers,
     ).
     
 
-
+%% TODO: Check whether this really gives the right numbers
 get_x_y_from_sequence(X_max, Sequence_number) ->
     {Sequence_number rem X_max, Sequence_number div X_max}.
+
 
 init([Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
