@@ -10,6 +10,8 @@
 %-export([update_iteration/1)].
 
 
+% @doc Example start: spectrum_dispatcher:start({local, spectrum_dispatcher},{random_sine, 256}, 0, 200).
+
 
 %%Start a spectrum_dispatcher server
 start(Server_name, Spectra_source, Iteration, Max_iteration ) ->
