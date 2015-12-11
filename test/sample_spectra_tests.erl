@@ -6,6 +6,6 @@ make_sine_spectrum_test() ->
 .
 
 make_sample_spectrum_bucket_test() ->
-    ?assertEqual(ok, sample_spectra:make_sample_spectrum_bucket([2,2], "/var/tmp/sine_spectra_test_directory", 10))
+    ?assertEqual(ok, sample_spectra:make_sample_spectrum_bucket([2,2], "/var/tmp/sine_spectra_test_directory", 10, plain))
 .
 
