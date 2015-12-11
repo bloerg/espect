@@ -61,7 +61,6 @@ get_spectrum(Server_name) ->
 %~ update_iteration(Server_name, New_BMU) ->
     %~ gen_server:call(Server_name, {set_bmu, New_BMU}).
 
-
 handle_call(
     get_spectrum, _From, [{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
         Reply = spectrum_handling:read_spectrum_from(random_sine, Spectrum_length),
