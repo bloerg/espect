@@ -40,8 +40,8 @@ terminate(_Reason, _Neuron_state) ->
 
 
 init(Init_data) ->
+    gen_event:add_handler(neuron_events, neuron_event_handler, self()),
     {ok, Init_data}.
-
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
 get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
@@ -53,7 +53,6 @@ set_bmu(Server_name, New_BMU) ->
 %% @doc calls the function to compute the new neuron vector
 update_neuron(Server_name, BMU_spectrum, BMU_coordinates) ->
     gen_server:call(Server_name, {update_neuron, BMU_spectrum, BMU_coordinates}).
-    
     
 
 handle_call(
