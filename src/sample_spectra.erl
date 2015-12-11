@@ -1,6 +1,6 @@
 -module(sample_spectra).
 -export([make_sine_spectrum/1]).
--export([make_sample_spectrum_bucket/3]).
+-export([make_sample_spectrum_bucket/4]).
 
 %% @author Jörg Brünecke <dev@bloerg.de>
 %% @doc sample spectrum module
@@ -9,7 +9,7 @@
 %% The Spectra can be generated in bulk and written to files (one spectrum each) in a provided directory for later use.
 
 
-make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength) 
+make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_format) 
     when 
         is_integer(MaxX),
         is_integer(MaxY),
@@ -23,17 +23,30 @@ make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength)
                 %erlang:display({debug, sample_spectra, [X,Y], X*(Y+1)+X}),
                 OutputFile=string:join([BaseDirectory, "/", FileName], ""),
                 %erlang:display({debug, sample_spectra, write_to_file, OutputFile}),
-                ok = write_sample_spectrum_to_file(
-                    OutputFile, 
-                    make_sine_spectrum(SpectrumLength)
-                )
+                case File_format of
+                    plain ->
+                        ok = write_sample_spectrum_to_plain_file(
+                            OutputFile, 
+                            make_sine_spectrum(SpectrumLength)
+                        );
+                    binary ->
+                        ok = write_sample_spectrum_to_binary_file(
+                            OutputFile, 
+                            term_to_binary(make_sine_spectrum(SpectrumLength))
+                        )
+                end
             end,
             [[X,Y] || X <- lists:seq(0,MaxX), Y <- lists:seq(0, MaxY)]
         )
     .
 
-write_sample_spectrum_to_file(Filename, Spectrum) ->
+write_sample_spectrum_to_plain_file(Filename, Spectrum) ->
     file:write_file(Filename, io_lib:fwrite("~p.\n", [Spectrum])).
+
+write_sample_spectrum_to_binary_file(Filename, Spectrum) ->
+    file:write_file(Filename, [Spectrum]).
+
+
 
 make_sine_spectrum(NumberOfElements) ->
     A=random:uniform()*10,
