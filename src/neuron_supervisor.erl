@@ -78,6 +78,8 @@ init([Number_of_workers,
             {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ]) ->
+    %Start neuron event manager
+    gen_event:start({local, neuron_events}),
     Supervisor_specification = {
         one_for_one, 
         10,
