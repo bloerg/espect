@@ -40,7 +40,7 @@ terminate(_Reason, _Neuron_state) ->
 
 
 init(Init_data) ->
-    gen_event:add_handler(neuron_events, {neuron_event_handler, self()}, self()),
+    gen_event:add_handler(neuron_event_manager, {neuron_event_handler, self()}, [self()]),
     {ok, Init_data}.
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
