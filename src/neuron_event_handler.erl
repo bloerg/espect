@@ -10,8 +10,7 @@ init([{pid, Pid}]) ->
     {ok, [{pid, Pid}]}.
 
 handle_event({compare, Spectrum, Spectrum_metadata}, [{pid, Pid}]) ->
-    %neuron:get_neuron_spectrum_distance(Pid, Spectrum, Spectrum_metadata),
-    erlang:write([{compare, Spectrum, Spectrum_metadata}, [{pid, Pid}]]),
+    neuron:get_neuron_spectrum_distance(Pid, Spectrum, Spectrum_metadata),
     {ok, [{pid, Pid}]}.
 
 handle_call(_, State) ->
