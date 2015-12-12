@@ -79,7 +79,7 @@ init([Number_of_workers,
         }
     ]) ->
     %Start neuron event manager
-    gen_event:start({local, neuron_events}),
+    gen_event:start_link({local, neuron_events}),
     Supervisor_specification = {
         one_for_one, 
         10,
