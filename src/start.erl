@@ -26,5 +26,7 @@ start() ->
             {ok, _} = neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 100, 100, 0}});
         {ok, Pid} ->
             erlang:display("Started supervision tree with pid"),
-            erlang:display(Pid)
+            erlang:display(Pid),
+            ok
     end.
+
