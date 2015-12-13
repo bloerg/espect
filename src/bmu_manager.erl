@@ -35,6 +35,7 @@ terminate(_Reason, _Neuron_state) ->
 
 
 init(State) ->
+    gen_event:add_handler(iteration_event_manager, {?MODULE, self()}, [{pid, self()}, {module, ?MODULE}]),
     {ok, State}.
     
 neuron_spectrum_distance(Result_receiver_name, Data
