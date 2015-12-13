@@ -90,7 +90,7 @@ init([Number_of_workers,
     neuron_event_handler:start_link({local, neuron_event_manager}),
     
     %Start BMU manager
-    bmu_manager:start({local, bmu_manager}, Iteration, Max_iteration),
+    bmu_manager:start_link({local, bmu_manager}, Iteration, Max_iteration),
     
     Supervisor_specification = {
         one_for_one, 
