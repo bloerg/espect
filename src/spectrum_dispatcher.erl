@@ -41,6 +41,7 @@ init([{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
     {ok, [{random_sine, Spectrum_length}, Iteration, Max_iteration]};
 
 init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteration])
+    gen_event:add_handler(iteration_event_manager, {?MODULE, self()}, [{pid, self()}, {module, ?MODULE}]),
     when Start_index > 0 ->
     {ok, [
         { filesystem, Directory,
