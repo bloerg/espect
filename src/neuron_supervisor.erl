@@ -78,6 +78,10 @@ init([Number_of_workers,
             {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ]) ->
+    
+    %start iteration event manager
+    iteration_event_handler:start_link({local, iteration_event_manager}),
+    
     %Start neuron event manager
     neuron_event_handler:start_link({local, neuron_event_manager}),
     
