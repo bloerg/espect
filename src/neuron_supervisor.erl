@@ -6,7 +6,7 @@
 -export([get_x_y_from_sequence/2]).
 
 
-% @doc Example start command: neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 500, 500, 0}}).
+% @doc Example start command: neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 100, 100, 0}}).
 
 start_link(Server_name, Number_of_workers, 
         {child_specs, Iteration, Max_iteration, 
