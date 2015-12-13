@@ -66,7 +66,8 @@ handle_cast(
             bmu_manager:neuron_spectrum_distance(Result_receiver_name,
                 [Neuron_coordinates, 
                      Spectrum_metadata, 
-                     vector_operations:vector_distance(Neuron_vector, Spectrum)
+                     vector_operations:vector_distance(Neuron_vector, Spectrum),
+                     Neuron_vector
                 ]
             ),
         {noreply, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]};
