@@ -3,7 +3,7 @@
 -export([start/1, start_link/1, init/1]).
 -export([handle_event/2, handle_call/2, handle_info/2]).
 -export([code_change/3]).
--export([terminate/2]).
+-export([stop/1, terminate/2]).
 -export([trigger_neuron_compare/1, trigger_neuron_update/1]).
 
 
@@ -11,6 +11,9 @@ start_link(Event_manager_name) ->
     gen_event:start_link(Event_manager_name).
 start(Event_manager_name) ->
     gen_event:start_link(Event_manager_name).
+    
+stop(Event_manager_name) ->
+    gen_event:stop(Event_manager_name).
 
 init([{pid, Pid}]) ->
     {ok, [{pid, Pid}]}.
