@@ -33,8 +33,8 @@ stop() ->
 stop(Server_name) ->
     gen_server:cast(Server_name, stop).
 terminate(_Reason, _Neuron_state) ->
-    noop
-    .
+    gen_event:delete_handler(neuron_event_manager, {neuron_event_handler, self()}, []).
+
 
 
 init(Init_data) ->
@@ -47,7 +47,7 @@ get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
     
 %% @doc async vector distance computing
 get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectrum, Spectrum_metadata) ->
-    gen_server:cast(Server_name, {async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}).
+    gen_server:cast(Server_name, {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}).
 
 set_bmu(Server_name, New_BMU) ->
     gen_server:call(Server_name, {set_bmu, New_BMU}).
