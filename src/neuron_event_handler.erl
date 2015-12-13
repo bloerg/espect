@@ -11,6 +11,9 @@ init([{pid, Pid}]) ->
 
 handle_event({compare, Spectrum, Spectrum_metadata}, [{pid, Pid}]) ->
     neuron:get_neuron_spectrum_distance(Pid, Spectrum, Spectrum_metadata),
+    {ok, [{pid, Pid}]};
+handle_event({compare_async, Spectrum, Spectrum_metadata}, [{pid, Pid}]) ->
+    neuron:get_neuron_spectrum_distance({async, bmu_manager}, Pid, Spectrum, Spectrum_metadata),
     {ok, [{pid, Pid}]}.
 
 handle_call(_, State) ->
@@ -27,4 +30,5 @@ terminate(_Reason, _State) ->
 
 
 trigger_neuron_compare({compare, Spectrum, Spectrum_metadata}) ->
-    gen_event:sync_notify(neuron_event_manager, {compare, Spectrum, Spectrum_metadata}).
+    %gen_event:sync_notify(neuron_event_manager, {compare, Spectrum, Spectrum_metadata}).
+    gen_event:sync_notify(neuron_event_manager, {compare_async, Spectrum, Spectrum_metadata}).
