@@ -81,7 +81,8 @@ handle_call(
         ),
         {reply, Reply, [{filesystem, Directory, File_format, Spectra_file_list, 
                             case Spec_list_index == length(Spectra_file_list) of
-                                true -> 1; %TODO: should trigger an iteration Step update, but we must deal with empty neurons, too
+                                true -> interation_state_server:next_iteration(iteration_state_server),
+                                        1;
                                 false -> Spec_list_index +1 
                             end
                         }, Iteration, Max_iteration

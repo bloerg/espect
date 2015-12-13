@@ -80,7 +80,7 @@ init([Number_of_workers,
     ]) ->
     
     %start iteration state server
-    iteration_state_server:start({local, iteration_state_server}, Iteration, Max_iteration)
+    iteration_state_server:start({local, iteration_state_server}, Iteration, Max_iteration),
 
     %start iteration event manager
     iteration_event_handler:start_link({local, iteration_event_manager}),
