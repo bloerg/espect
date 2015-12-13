@@ -9,8 +9,7 @@
 -export([neuron_spectrum_distance/2, get_bmu/1, get_state/1, set_iteration/2]).
 
 
-%%Start a neuron server
-%returns [Iteration, Max_iteration, Shortest_distance, BMU_coordinates]
+
 start(Server_name, Iteration, Max_iteration) ->
     gen_server:start(Server_name, ?MODULE, [Iteration, Max_iteration, 1000000, [], []], []). 
 
@@ -23,7 +22,7 @@ start(Iteration, Max_iteration) ->
 start_link(Iteration, Max_iteration) ->
     gen_server:start_link(?MODULE, [Iteration, Max_iteration, 1000000 , [], []], []).
 
-%%Stop a neuron server
+
 stop() ->
     gen_server:cast(?MODULE, stop).
 stop(Server_name) ->
