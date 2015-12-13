@@ -30,12 +30,12 @@ stop(Server_name) ->
     gen_server:cast(Server_name, stop).
 
 terminate(_Reason, _Neuron_state) ->
-    noop
+    ok
     .
 
 
 init(State) ->
-    gen_event:add_handler(iteration_event_manager, {?MODULE, self()}, [{pid, self()}, {module, ?MODULE}]),
+    gen_event:add_handler(iteration_event_manager, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
     {ok, State}.
     
 neuron_spectrum_distance(Result_receiver_name, Data
