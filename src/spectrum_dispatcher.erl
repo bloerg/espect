@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1]).
+-export([get_spectrum/1, set_iteration/2]).
 %-export([update_iteration/1)].
 
 
