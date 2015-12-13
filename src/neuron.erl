@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_neuron_spectrum_distance/3]).
+-export([get_neuron_spectrum_distance/3, get_neuron_spectrum_distance/4]).
 -export([set_bmu/2]).
 -export([update_neuron/3]).
 
@@ -19,21 +19,19 @@ start(Server_name, Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iterat
     gen_server:start(Server_name, ?MODULE, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration], []).
 
 start_link(Server_name, Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration) ->
-    gen_server:start(Server_name, ?MODULE, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration], []).
+    gen_server:start_link(Server_name, ?MODULE, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration], []).
 
 start(Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration) ->
     gen_server:start(?MODULE, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration], []).
 
 start_link(Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration) ->
-    gen_server:start(?MODULE, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration], []).
+    gen_server:start_link(?MODULE, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration], []).
 
 %%Stop a neuron server
 stop() ->
     gen_server:cast(?MODULE, stop).
 stop(Server_name) ->
     gen_server:cast(Server_name, stop).
-handle_cast(stop, Neuron_state) ->
-    {stop, normal, Neuron_state}.
 terminate(_Reason, _Neuron_state) ->
     noop
     .
@@ -46,6 +44,10 @@ init(Init_data) ->
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
 get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
     gen_server:call(Server_name, {compare, Spectrum, Spectrum_metadata}).
+    
+%% @doc async vector distance computing
+get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectrum, Spectrum_metadata) ->
+    gen_server:cast(Server_name, {async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}).
 
 set_bmu(Server_name, New_BMU) ->
     gen_server:call(Server_name, {set_bmu, New_BMU}).
@@ -53,7 +55,21 @@ set_bmu(Server_name, New_BMU) ->
 %% @doc calls the function to compute the new neuron vector
 update_neuron(Server_name, BMU_spectrum, BMU_coordinates) ->
     gen_server:call(Server_name, {update_neuron, BMU_spectrum, BMU_coordinates}).
-    
+
+
+handle_cast(
+    {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}, 
+    [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
+            bmu_manager:neuron_spectrum_distance(Result_receiver_name,
+                [Neuron_coordinates, 
+                     Spectrum_metadata, 
+                     vector_operations:vector_distance(Neuron_vector, Spectrum)
+                ]
+            ),
+        {noreply, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]};
+
+handle_cast(stop, Neuron_state) ->
+    {stop, normal, Neuron_state}.
 
 handle_call(
     {compare, Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
