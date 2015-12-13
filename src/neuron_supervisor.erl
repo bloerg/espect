@@ -80,6 +80,10 @@ init([Number_of_workers,
     ]) ->
     %Start neuron event manager
     gen_event:start_link({local, neuron_event_manager}),
+    
+    %Start BMU manager
+    bmu_manager:start({local, bmu_manager}, Iteration, Max_iteration),
+    
     Supervisor_specification = {
         one_for_one, 
         10,
