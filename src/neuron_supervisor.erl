@@ -70,7 +70,7 @@ start(Number_of_workers,
 %% TODO: Check whether this really gives the right numbers
 %% X is supposed to start at 0, as well as the index, so (0,0) corresponds to 0
 get_x_y_from_sequence(X_max, Sequence_number) ->
-    {Sequence_number rem (X_max +1), Sequence_number div (X_max + 1)}.
+    [Sequence_number rem (X_max +1), Sequence_number div (X_max + 1)].
 
 
 init([Number_of_workers, 
