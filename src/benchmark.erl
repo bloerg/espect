@@ -1,7 +1,7 @@
 -module(benchmark).
 -export([speed_test_get_neuron_spectrum_distance/2]).
 -export([speed_test_update_neuron/2]).
--export([speed_test_event_handler_trigger_neuron_compare/1]).
+-export([speed_test_event_handler_trigger_neuron_compare/1, speed_test_event_handler_trigger_neuron_update/1]).
 
 
 
@@ -51,3 +51,14 @@ speed_test_event_handler_trigger_neuron_compare(Iterations) ->
     T2 = os:timestamp(),
     erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", compares per second: ", Iterations*Number_of_neurons/timer:now_diff(T2,T1)*1000000}).
     
+speed_test_event_handler_trigger_neuron_update(Iterations) ->
+    Number_of_neurons = length(gen_event:which_handlers(neuron_event_manager)),
+    T1 = os:timestamp(),
+    lists:foreach(
+        fun(_Iteration) ->
+            neuron_event_handler:trigger_neuron_update({update_async, spectrum_dispatcher:get_spectrum(spectrum_dispatcher), [3,4]})
+        end,
+        [Iteration || Iteration <- lists:seq(1, Iterations)]
+    ),
+    T2 = os:timestamp(),
+    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", updates per second: ", Iterations*Number_of_neurons/timer:now_diff(T2,T1)*1000000}).
