@@ -79,8 +79,12 @@ init([Number_of_workers,
         }
     ]) ->
     
+
     %start iteration event manager
     iteration_event_handler:start_link({local, iteration_event_manager}),
+    
+    %start spectrum dispatcher
+    spectrum_dispatcher:start({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/", binary, 1}, 0, 200),
     
     %Start neuron event manager
     neuron_event_handler:start_link({local, neuron_event_manager}),
