@@ -32,10 +32,8 @@ stop() ->
     gen_server:cast(?MODULE, stop).
 stop(Server_name) ->
     gen_server:cast(Server_name, stop).
-handle_cast(stop, Spectrum_dispatcher_state) ->
-    {stop, normal, Spectrum_dispatcher_state}.
 terminate(_Reason, _Spectrum_dispatcher_state) ->
-    noop
+    ok
     .
 
 
@@ -59,8 +57,15 @@ init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteratio
 get_spectrum(Server_name) ->
     gen_server:call(Server_name, get_spectrum).
 
-%~ update_iteration(Server_name, New_BMU) ->
-    %~ gen_server:call(Server_name, {set_bmu, New_BMU}).
+set_iteration(Server_name, New_iteration) ->
+    gen_server:cast(Server_name, {set_iteration, New_iteration}).
+    
+handle_cast({set_iteration, New_iteration}, [Spectra_source, _Old_iteration, Max_iteration]) ->
+    {noreply, [Spectra_source, New_iteration, Max_iteration]};
+
+handle_cast(stop, Spectrum_dispatcher_state) ->
+    {stop, normal, Spectrum_dispatcher_state}.
+
 
 handle_call(
     get_spectrum, _From, [{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->

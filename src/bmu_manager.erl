@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([neuron_spectrum_distance/2, get_bmu/1, get_state/1]).
+-export([neuron_spectrum_distance/2, get_bmu/1, get_state/1, set_iteration/2]).
 
 
 %%Start a neuron server
@@ -54,11 +54,17 @@ get_bmu(Result_receiver_name) ->
 get_state(Result_receiver_name) ->
     gen_server:call(Result_receiver_name, get_state).
 
+set_iteration(Server_name, New_iteration) ->
+    gen_server:cast(Server_name, {set_iteration, New_iteration}).
+
+
 handle_cast([Neuron_coordinates, _Spectrum_metadata, Spectrum_neuron_distance, Neuron_vector], [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]) ->
     case Spectrum_neuron_distance < Shortest_distance of
         true -> {noreply, [Iteration, Max_iteration, Spectrum_neuron_distance, Neuron_coordinates, Neuron_vector]};
         false -> {noreply, [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]}
     end;
+handle_cast({set_iteration, New_iteration}, [_Old_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]) ->
+    {noreply, [New_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]};
     
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
