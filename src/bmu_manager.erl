@@ -21,7 +21,7 @@ start(Iteration, Max_iteration) ->
     gen_server:start(?MODULE, [Iteration, Max_iteration, 1000000, [], []], []).
 
 start_link(Iteration, Max_iteration) ->
-    gen_server:start(?MODULE, [Iteration, Max_iteration, 1000000 , [], []], []).
+    gen_server:start_link(?MODULE, [Iteration, Max_iteration, 1000000 , [], []], []).
 
 %%Stop a neuron server
 stop() ->
