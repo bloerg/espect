@@ -19,13 +19,13 @@ start(Server_name, Spectra_source, Iteration, Max_iteration ) ->
     gen_server:start(Server_name, ?MODULE, [Spectra_source, Iteration, Max_iteration], []).
 
 start_link(Server_name, Spectra_source, Iteration, Max_iteration ) ->
-    gen_server:start(Server_name, ?MODULE, [Spectra_source, Iteration, Max_iteration], []).
+    gen_server:start_link(Server_name, ?MODULE, [Spectra_source, Iteration, Max_iteration], []).
 
 start(Spectra_source, Iteration, Max_iteration ) ->
     gen_server:start(?MODULE, [Spectra_source, Iteration, Max_iteration], []).
 
 start_link(Spectra_source, Iteration, Max_iteration ) ->
-    gen_server:start(?MODULE, [Spectra_source, Iteration, Max_iteration], []).
+    gen_server:start_link(?MODULE, [Spectra_source, Iteration, Max_iteration], []).
 
 %%Stop a spectrum_dispatcher server
 stop() ->
