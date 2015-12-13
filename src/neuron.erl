@@ -33,7 +33,8 @@ stop() ->
 stop(Server_name) ->
     gen_server:cast(Server_name, stop).
 terminate(_Reason, _Neuron_state) ->
-    gen_event:delete_handler(neuron_event_manager, {neuron_event_handler, self()}, []).
+    gen_event:delete_handler(neuron_event_manager, {neuron_event_handler, self()}, []),
+    ok.
 
 
 
