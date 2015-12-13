@@ -49,5 +49,5 @@ speed_test_event_handler_trigger_neuron_compare(Iterations) ->
         [Iteration || Iteration <- lists:seq(1, Iterations)]
     ),
     T2 = os:timestamp(),
-    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", updates per second: ", Iterations*Number_of_neurons/timer:now_diff(T2,T1)*1000000}).
+    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", compares per second: ", Iterations*Number_of_neurons/timer:now_diff(T2,T1)*1000000}).
     
