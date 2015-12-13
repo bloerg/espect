@@ -8,7 +8,7 @@
 -export([init/1]).
 -export([get_neuron_spectrum_distance/3, get_neuron_spectrum_distance/4]).
 -export([set_bmu/2]).
--export([update_neuron/3]).
+-export([update_neuron/3, update_neuron/4]).
 
 %for testing, remove later
 -export([alpha/4, sigma/4, neighbourhood_function1/4]).
@@ -56,6 +56,9 @@ set_bmu(Server_name, New_BMU) ->
 update_neuron(Server_name, BMU_spectrum, BMU_coordinates) ->
     gen_server:call(Server_name, {update_neuron, BMU_spectrum, BMU_coordinates}).
 
+update_neuron(async, Server_name, BMU_spectrum, BMU_coordinates) ->
+    gen_server:cast(Server_name, {update_neuron, BMU_spectrum, BMU_coordinates}).
+
 
 handle_cast(
     {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}, 
@@ -67,6 +70,25 @@ handle_cast(
                 ]
             ),
         {noreply, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]};
+
+handle_cast({update_neuron, BMU_spectrum, BMU_coordinates}, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
+    %% The if is for benchmark. Iteration should not go back to 0, actually
+    if
+        Iteration < Max_iteration -> Iteration2 = Iteration + 1;
+        Iteration == Max_iteration -> Iteration2 = 0
+    end,
+    {noreply, [Neuron_coordinates, 
+             vector_operations:vector_sum(Neuron_vector,
+                vector_operations:scalar_multiplication(
+                    neighbourhood_function1(Iteration, Max_iteration, Neuron_coordinates, BMU_coordinates),
+                    vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
+                )
+             ),
+             BMU,
+             Iteration2,                
+             Max_iteration
+            ]
+    };
 
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
