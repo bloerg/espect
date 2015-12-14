@@ -1,7 +1,7 @@
 -module(neurons).
 -beaviour(gen_server).
 
--export([start/2, start_link/2, start/3, start_link/3]).
+-export([start/5, start_link/5, start/6, start_link/6]).
 -export([stop/0, stop/1, terminate/2]).
 %~ -export([handle_cast/2]).
 %~ -export([handle_call/3]).
@@ -14,24 +14,68 @@
 -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
 
 -record(neuron, {
-                    neuron_vector = [], %the vector representing the spectrum occupied by the neuron
-                    neuron_coordinates = [], %the coordinates of the neuron in the som
-                    bmu_to_spectrum_id = term_to_binary([-1,-1,-1]), %the neuron is BMU to spectrum with id
-                    last_spectrum_neuron_vector_difference = [] %the vector difference computed in the compare process, used later for the update computation
-                }).
+    neuron_vector = [], %the vector representing the spectrum occupied by the neuron
+    neuron_coordinates = [], %the coordinates of the neuron in the som
+    bmu_to_spectrum_id = term_to_binary([-1,-1,-1]), %the neuron is BMU to spectrum with id
+    last_spectrum_neuron_vector_difference = [] %the vector difference computed in the compare process, used later for the update computation
+}).
+
+-record(neuron_worker_state, {
+    spectrum_dispatcher = spectrum_dispatcher,  %Name of the spectrum dispatcher server
+    neuron_coordinate_range = [], %interval of the sequence of neuron coordinates, element of [0 ... Max_x * Max_y]
+    som_dimensions = [], % maximum x and maximum y coordinate of the self organizing map
+    iteration = 0, %iteration step
+    max_iteration = 200 %maximum number of iterations
+}).
 
 %%Start a neuron server
-start(Server_name, Iteration, Max_iteration) ->
-    gen_server:start(Server_name, ?MODULE, [Iteration, Max_iteration], []).
+start(Server_name, Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+    gen_server:start(Server_name, ?MODULE, 
+            #neuron_worker_state {
+                spectrum_dispatcher = Spectrum_dispatcher,
+                neuron_coordinate_range = Neuron_coordinate_range,
+                som_dimensions = [Max_x, Max_y],
+                iteration = Iteration,
+                max_iteration = Max_iteration
+            }
+        ,[]
+    ).
 
-start_link(Server_name, Iteration, Max_iteration) ->
-    gen_server:start_link(Server_name, ?MODULE, [Iteration, Max_iteration], []).
+start_link(Server_name, Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+    gen_server:start_link(Server_name, ?MODULE, 
+            #neuron_worker_state {
+                spectrum_dispatcher = Spectrum_dispatcher,
+                neuron_coordinate_range = Neuron_coordinate_range,
+                som_dimensions = [Max_x, Max_y],
+                iteration = Iteration,
+                max_iteration = Max_iteration
+            }
+        ,[]
+    ).
 
-start(Iteration, Max_iteration) ->
-    gen_server:start(?MODULE, [Iteration, Max_iteration], []).
+start(Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+    gen_server:start(?MODULE, 
+            #neuron_worker_state {
+                spectrum_dispatcher = Spectrum_dispatcher,
+                neuron_coordinate_range = Neuron_coordinate_range,
+                som_dimensions = [Max_x, Max_y],
+                iteration = Iteration,
+                max_iteration = Max_iteration
+            }
+        ,[]
+    ).
 
-start_link(Iteration, Max_iteration) ->
-    gen_server:start_link(?MODULE, [Iteration, Max_iteration], []).
+start_link(Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+    gen_server:start_link(?MODULE, 
+            #neuron_worker_state {
+                spectrum_dispatcher = Spectrum_dispatcher,
+                neuron_coordinate_range = Neuron_coordinate_range,
+                som_dimensions = [Max_x, Max_y],
+                iteration = Iteration,
+                max_iteration = Max_iteration
+            }
+        ,[]
+    ).
 
 %%Stop a neuron server
 stop() ->
@@ -44,10 +88,23 @@ terminate(_Reason, _Neuron_state) ->
 
 
 
-init(Init_data) ->
+init(State) ->
     gen_event:add_handler(neuron_event_manager, {neuron_event_handler, self()}, [{pid, self()}]),
     gen_event:add_handler(iteration_event_manager, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
-    {ok, Init_data}.
+
+    [First_neuron, Last_neuron] = State#neuron_worker_state.neuron_coordinate_range,
+    [X_max, _Y_max] = State#neuron_worker_state.som_dimensions,
+    
+    {ok, [
+            [ #neuron {
+                    %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
+                    neuron_vector = spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher),
+                    neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
+                } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
+            ],
+            State
+        ]
+    }.
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
 get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
