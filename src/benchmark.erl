@@ -3,7 +3,7 @@
 -export([speed_test_update_neuron/2]).
 -export([speed_test_event_handler_trigger_neuron_compare/1, speed_test_event_handler_trigger_neuron_update/1]).
 -export([speed_test_neighbourhood_function1/5, speed_test_neighbourhood_function2/5, speed_test_neighbourhood_function3/5, speed_test_neighbourhood_function4/5]).
-
+-export([speed_test_vector_length/2, speed_test_vector_length2/2]).
 
 speed_test_get_neuron_spectrum_distance(Spectrum_width, Repetitions) ->
     T1 = os:timestamp(),
@@ -133,3 +133,28 @@ speed_test_event_handler_trigger_neuron_update(Iterations) ->
     ),
     T2 = os:timestamp(),
     erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", updates per second: ", Iterations*Number_of_neurons/timer:now_diff(T2,T1)*1000000}).
+
+
+speed_test_vector_length(Iterations, Vector_length) ->
+    Vector = sample_spectra:make_sine_spectrum(Vector_length),
+    T1 = os:timestamp(),
+    lists:foreach(
+        fun(_Iteration) ->
+            vector_operations:vector_length(Vector)
+        end,
+        [Iteration || Iteration <- lists:seq(1, Iterations)]
+    ),
+    T2 = os:timestamp(),
+    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", vector_lengths per second: ", Iterations/timer:now_diff(T2,T1)*1000000}).
+
+speed_test_vector_length2(Iterations, Vector_length) ->
+    Vector = sample_spectra:make_sine_spectrum(Vector_length),
+    T1 = os:timestamp(),
+    lists:foreach(
+        fun(_Iteration) ->
+            vector_operations:vector_length2(Vector)
+        end,
+        [Iteration || Iteration <- lists:seq(1, Iterations)]
+    ),
+    T2 = os:timestamp(),
+    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", vector_lengths per second: ", Iterations/timer:now_diff(T2,T1)*1000000}).
