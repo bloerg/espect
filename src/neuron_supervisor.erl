@@ -100,43 +100,28 @@ init([Number_of_workers_per_supervisor,
         10
     },
     % make a list of {x,y} coordinate tuples for neurons
-    Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers_per_supervisor)],
+    %Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers_per_supervisor)],
+    Number_of_neurons = X_max * Y_max,
+    Number_of_neurons_per_worker = (Number_of_neurons - Next_free_neuron) div Number_of_workers_per_supervisor + (Number_of_neurons - Next_free_neuron) rem Number_of_workers_per_supervisor,
+    Children_neuron_coordinate_ranges = [
+            [Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons)] 
+            || Lower_limit <- lists:seq(Next_free_neuron, Number_of_neurons, Number_of_neurons_per_worker) 
+    ],
     Child_specification_list = 
         [ 
-            {Neuron_coordinates, 
-                {neuron, start_link, [Neuron_coordinates, spectrum_dispatcher:get_spectrum(spectrum_dispatcher), [], Iteration, Max_iteration]},
+            {Neuron_coordinate_range, 
+                {neurons, start_link, [spectrum_dispatcher, Neuron_coordinate_range, [X_max, Y_max], Iteration, Max_iteration]},
                 permanent,
                 10000,
                 worker,
                 [neuron]
             }
-        || Neuron_coordinates <- Children_coordinates
+        || Neuron_coordinate_range <- Children_neuron_coordinate_ranges
         ],
-    case Next_free_neuron + Number_of_workers_per_supervisor < X_max * Y_max of
-        true -> 
-            Sub_supervisor_specification = [
-                {Next_free_neuron + Number_of_workers_per_supervisor,
-                    {neuron_supervisor, start_link, 
-                        [Number_of_workers_per_supervisor, 
-                            {child_specs, Iteration, Max_iteration, 
-                              {neuron_coordinates, X_max, Y_max, min(Next_free_neuron + Number_of_workers_per_supervisor, X_max * Y_max)}
-                            }
-                        ]
-                    },
-                permanent,
-                10000,
-                supervisor,
-                [neuron_supervisor]
-                }
-            ];
-        false -> 
-            Sub_supervisor_specification = []
-    end,
-
     {ok, 
         {
         Supervisor_specification, 
-        Child_specification_list ++ Sub_supervisor_specification
+        Child_specification_list
         }
     }.
 
