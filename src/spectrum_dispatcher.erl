@@ -81,7 +81,7 @@ handle_call(
         ),
         {reply, Reply, [{filesystem, Directory, File_format, Spectra_file_list, 
                             case Spec_list_index == length(Spectra_file_list) of
-                                true -> interation_state_server:next_iteration(iteration_state_server),
+                                true -> _Next_iteration = iteration_state_server:next_iteration(iteration_state_server),
                                         1;
                                 false -> Spec_list_index +1 
                             end
