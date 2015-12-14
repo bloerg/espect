@@ -42,7 +42,6 @@ neuron_spectrum_distance(Result_receiver_name, Data
     %~ [Neuron_coordinates, 
          %~ Spectrum_metadata, 
          %~ Spectrum_neuron_distance,
-         %~ Neuron_vector
     %~ ]
     ) ->
         gen_server:cast(Result_receiver_name, Data).
@@ -58,19 +57,19 @@ set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
 
-handle_cast([Neuron_coordinates, _Spectrum_metadata, Spectrum_neuron_distance, Neuron_vector], [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]) ->
+handle_cast([Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance], [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]) ->
     case Spectrum_neuron_distance < Shortest_distance of
-        true -> {noreply, [Iteration, Max_iteration, Spectrum_neuron_distance, Neuron_coordinates, Neuron_vector]};
-        false -> {noreply, [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]}
+        true -> {noreply, [Iteration, Max_iteration, Spectrum_neuron_distance, Neuron_coordinates, Spectrum_metadata]};
+        false -> {noreply, [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]}
     end;
-handle_cast({set_iteration, New_iteration}, [_Old_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]) ->
-    {noreply, [New_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_neuron_vector]};
+handle_cast({set_iteration, New_iteration}, [_Old_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]) ->
+    {noreply, [New_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]};
     
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
     
 handle_call(get_bmu, _From, State) ->
-    [_Iteration, _Max_iteration, _Shortest_distance, BMU_coordinates, _BMU_neuron_vector] = State,
+    [_Iteration, _Max_iteration, _Shortest_distance, BMU_coordinates, _BMU_spectrum_metadata] = State,
     {reply, BMU_coordinates, State};
 handle_call(get_state, _From, State) ->
     {reply, State, State}.
