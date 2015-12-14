@@ -3,7 +3,7 @@
 
 -export([start/5, start_link/5, start/6, start_link/6]).
 -export([stop/0, stop/1, terminate/2]).
-%~ -export([handle_cast/2]).
+-export([handle_cast/2]).
 %~ -export([handle_call/3]).
 -export([init/1]).
 -export([get_neuron_spectrum_distance/3, get_neuron_spectrum_distance/4]).
@@ -127,17 +127,36 @@ update_neuron(async, Server_name, BMU_spectrum, BMU_coordinates) ->
 set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
-%~ handle_cast(
-    %~ {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}, 
-    %~ [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
-            %~ bmu_manager:neuron_spectrum_distance(Result_receiver_name,
-                %~ [Neuron_coordinates, 
-                     %~ Spectrum_metadata, 
-                     %~ vector_operations:vector_distance(Neuron_vector, Spectrum),
-                     %~ Neuron_vector
-                %~ ]
-            %~ ),
-        %~ {noreply, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]};
+handle_cast(
+    {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}, 
+    [Neurons, Neuron_worker_state]) ->
+        NewNeurons =
+            lists:map(fun(Neuron) ->
+                Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
+                    Neuron#neuron{
+                        last_spectrum_neuron_vector_difference = Neuron_vector_difference
+                    }
+            end,
+            Neurons
+            ),
+        [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] = 
+            lists:foldl(fun(Neuron, [Min_distance, Min_distance_neuron_coordinates]) ->
+                Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference),
+                case Spectrum_vector_distance < Min_distance of
+                    true -> [Spectrum_vector_distance, Neuron#neuron.neuron_coordinates];
+                    false -> [Min_distance, Min_distance_neuron_coordinates]
+                end
+            end,
+            [576460752303423487, []], NewNeurons),  %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
+
+        bmu_manager:neuron_spectrum_distance(Result_receiver_name,
+            [Min_spectrum_neuron_distance_coordinates, 
+                 Spectrum_metadata, 
+                 Min_spectrum_neuron_distance
+            ]
+        ),
+        {noreply, [NewNeurons, Neuron_worker_state]}
+.
 
 %~ handle_cast({update_neuron, BMU_spectrum, BMU_coordinates}, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
     %~ {noreply, [Neuron_coordinates, 
