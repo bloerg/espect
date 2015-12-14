@@ -19,13 +19,13 @@ init([{pid, Pid}]) ->
     {ok, [{pid, Pid}]}.
 
 handle_event({compare, Spectrum, Spectrum_metadata}, [{pid, Pid}]) ->
-    neuron:get_neuron_spectrum_distance(Pid, Spectrum, Spectrum_metadata),
+    neurons:get_neuron_spectrum_distance(Pid, Spectrum, Spectrum_metadata),
     {ok, [{pid, Pid}]};
 handle_event({compare_async, Spectrum, Spectrum_metadata}, [{pid, Pid}]) ->
-    neuron:get_neuron_spectrum_distance({async, bmu_manager}, Pid, Spectrum, Spectrum_metadata),
+    neurons:get_neuron_spectrum_distance({async, bmu_manager}, Pid, Spectrum, Spectrum_metadata),
     {ok, [{pid, Pid}]};
 handle_event({update_async, BMU_spectrum, BMU_coordinates}, [{pid, Pid}]) ->
-    neuron:update_neuron(async, Pid, BMU_spectrum, BMU_coordinates),
+    neurons:update_neuron(async, Pid, BMU_spectrum, BMU_coordinates),
     {ok, [{pid, Pid}]}
 .
 
