@@ -17,7 +17,7 @@ init([{pid, Pid}, {module, Module}]) ->
     {ok, [{pid, Pid}, {module, Module}]}.
 
 handle_event({from_spectrum_dispatcher, no_spectra_left}, [{pid, Pid}, {module, Module}]) ->
-    %code here to make sure, all spectrum dispatchers on other nodes also have delivered als spectra
+    %code here to make sure, all spectrum dispatchers on other nodes also have delivered all spectra
     Module:set_iteration(Pid, iteration_state_server:get_iteration(iteration_state_server)),
     {ok, [{pid, Pid}, {module, Module}]}
 .
