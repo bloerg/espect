@@ -66,17 +66,15 @@ vector_sum(Vector1, Vector2) when is_list(Vector1), is_list(Vector2) ->
 scalar_multiplication(Scalar, Vector) when is_float(Scalar) or is_integer(Scalar), is_list(Vector) ->
     lists:map(fun(Element) -> Element*Scalar end, Vector).
 
-
+%this is fast
 vector_length(Vector) ->
-    vector_length(Vector, []).
-vector_length([],[]) -> error_empty_list_is_no_vector;
-vector_length([Vector_first_component| Vector_rest],[]) ->
-    vector_length(Vector_rest, Vector_first_component * Vector_first_component);
-vector_length([Vector_first_component| Vector_rest], Intermediate_result) ->
-    vector_length(Vector_rest, Vector_first_component * Vector_first_component + Intermediate_result);
-vector_length([], Vector_length_squared) ->
-    math:sqrt(Vector_length_squared).
-    
+    vector_length(Vector, 0).
+vector_length([First| Rest], Sum_squared) ->
+    vector_length(Rest, Sum_squared + First*First);
+vector_length([], Sum_squared) ->
+    math:sqrt(Sum_squared).
+
+%this is slow
 vector_length2(Vector) ->
     math:sqrt(lists:foldl(fun(Element, Length_squared) ->
         Length_squared + Element * Element
