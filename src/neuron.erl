@@ -11,7 +11,7 @@
 -export([update_neuron/3, update_neuron/4]).
 
 %for testing, remove later
--export([alpha/4, sigma/4, neighbourhood_function1/4]).
+-export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
 
 
 %%Start a neuron server
@@ -153,3 +153,18 @@ neighbourhood_function1(T, T_max, Neuron_coordinates, BMU_coordinates) ->
             )
         )
 .
+neighbourhood_function2(Two_times_sigma_squared, Alpha, Neuron_coordinates, BMU_coordinates) ->
+        Alpha * math:exp(
+            -vector_operations:vector_distance(BMU_coordinates, Neuron_coordinates) 
+            / Two_times_sigma_squared
+        )
+.
+neighbourhood_function3(Two_times_sigma_squared, Alpha, Neuron_BMU_coordinate_distance) ->
+        Alpha * math:exp(
+            -Neuron_BMU_coordinate_distance / Two_times_sigma_squared
+        )
+.
+
+neighbourhood_function4(Exp_one_over_two_times_sigma_squared, Alpha, Neuron_BMU_coordinate_distance) ->
+        Alpha*math:pow(Exp_one_over_two_times_sigma_squared, Neuron_BMU_coordinate_distance).
+
