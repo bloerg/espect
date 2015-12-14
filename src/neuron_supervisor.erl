@@ -8,7 +8,7 @@
 
 % @doc Example start command: neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 100, 100, 0}}).
 
-start_link(Server_name, Number_of_workers, 
+start_link(Server_name, Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
@@ -16,28 +16,28 @@ start_link(Server_name, Number_of_workers,
     supervisor:start_link(
         Server_name, 
         ?MODULE, 
-        [Number_of_workers, 
+        [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
                 {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
 
-start_link(Number_of_workers, 
+start_link(Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ) ->
     supervisor:start_link(
         ?MODULE, 
-        [Number_of_workers, 
+        [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
                 {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
 
-start(Server_name, Number_of_workers, 
+start(Server_name, Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
@@ -45,21 +45,21 @@ start(Server_name, Number_of_workers,
     supervisor:start(
         Server_name, 
         ?MODULE, 
-        [Number_of_workers, 
+        [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
                 {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
         ]
     ).
 
-start(Number_of_workers, 
+start(Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
     ) ->
     supervisor:start(
         ?MODULE, 
-        [Number_of_workers, 
+        [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
                 {neuron_coordinates, X_max, Y_max, Next_free_neuron}
             }
@@ -73,7 +73,7 @@ get_x_y_from_sequence(X_max, Sequence_number) ->
     [Sequence_number rem (X_max +1), Sequence_number div (X_max + 1)].
 
 
-init([Number_of_workers, 
+init([Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
             {neuron_coordinates, X_max, Y_max, Next_free_neuron}
         }
@@ -100,7 +100,7 @@ init([Number_of_workers,
         10
     },
     % make a list of {x,y} coordinate tuples for neurons
-    Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers)],
+    Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers_per_supervisor)],
     Child_specification_list = 
         [ 
             {Neuron_coordinates, 
@@ -112,14 +112,14 @@ init([Number_of_workers,
             }
         || Neuron_coordinates <- Children_coordinates
         ],
-    case Next_free_neuron + Number_of_workers < X_max * Y_max of
+    case Next_free_neuron + Number_of_workers_per_supervisor < X_max * Y_max of
         true -> 
             Sub_supervisor_specification = [
-                {Next_free_neuron + Number_of_workers,
+                {Next_free_neuron + Number_of_workers_per_supervisor,
                     {neuron_supervisor, start_link, 
-                        [Number_of_workers, 
+                        [Number_of_workers_per_supervisor, 
                             {child_specs, Iteration, Max_iteration, 
-                              {neuron_coordinates, X_max, Y_max, min(Next_free_neuron + Number_of_workers, X_max * Y_max)}
+                              {neuron_coordinates, X_max, Y_max, min(Next_free_neuron + Number_of_workers_per_supervisor, X_max * Y_max)}
                             }
                         ]
                     },
