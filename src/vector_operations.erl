@@ -1,5 +1,5 @@
 -module(vector_operations).
--export([vector_distance_squared/3, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/2, scalar_multiplication/2]).
+-export([vector_distance_squared/3, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, scalar_multiplication/2]).
 -export([vector_generate/2]).
 
 
@@ -66,11 +66,14 @@ vector_sum(Vector1, Vector2) when is_list(Vector1), is_list(Vector2) ->
 scalar_multiplication(Scalar, Vector) when is_float(Scalar) or is_integer(Scalar), is_list(Vector) ->
     lists:map(fun(Element) -> Element*Scalar end, Vector).
 
+
+vector_length(Vector) ->
+    vector_length(Vector, []).
 vector_length([],[]) -> error_empty_list_is_no_vector;
 vector_length([Vector_first_component| Vector_rest],[]) ->
-    vector_length(Vector_rest, math:pow(Vector_first_component, 2));
+    vector_length(Vector_rest, Vector_first_component * Vector_first_component);
 vector_length([Vector_first_component| Vector_rest], Intermediate_result) ->
-    vector_length(Vector_rest, math:pow(Vector_first_component, 2) + Intermediate_result);
+    vector_length(Vector_rest, Vector_first_component * Vector_first_component + Intermediate_result);
 vector_length([], Vector_length_squared) ->
     math:sqrt(Vector_length_squared).
 
