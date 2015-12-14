@@ -1,5 +1,5 @@
 -module(vector_operations).
--export([vector_distance_squared/3, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, scalar_multiplication/2]).
+-export([vector_distance_squared/3, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2]).
 -export([vector_generate/2]).
 
 
@@ -76,6 +76,13 @@ vector_length([Vector_first_component| Vector_rest], Intermediate_result) ->
     vector_length(Vector_rest, Vector_first_component * Vector_first_component + Intermediate_result);
 vector_length([], Vector_length_squared) ->
     math:sqrt(Vector_length_squared).
+    
+vector_length2(Vector) ->
+    math:sqrt(lists:foldl(fun(Element, Length_squared) ->
+        Length_squared + Element * Element
+        end,
+        0, Vector)
+    ).
 
 
 
