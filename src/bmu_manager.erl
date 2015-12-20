@@ -7,13 +7,15 @@
 -export([handle_call/3]).
 -export([init/1]).
 -export([neuron_spectrum_distance/2, get_bmu/1, get_state/1, set_iteration/2]).
+-export([set_neurons_worker_list/2]).
 
 -record(bmu_manager_state, {
     bmu_coordinates = [], % The som_x, som_y coordinates of the best matching unit
     bmu_spectrum_metadata = [], % The identifier of the spectrum associated with the BMU, e.g. mjd, plateid, fiberid or objid
     shortest_distance = 576460752303423487, %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
     iteration = 0, %iteration step
-    max_iteration = 200 %maximum number of iterations
+    max_iteration = 200, %maximum number of iterations
+    neurons_worker_list = []
 }).
 
 start(Server_name, Iteration, Max_iteration) ->
@@ -91,6 +93,8 @@ get_state(Result_receiver_name) ->
 set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
+set_neurons_worker_list(Server_name, Neurons_worker_list) ->
+    gen_server:call(Server_name, {set_neurons_worker_list, Neurons_worker_list}).
 
 handle_cast({intermediate, [Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance]}, BMU_manager_state) ->
     case Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance of
@@ -111,6 +115,8 @@ handle_cast({set_iteration, New_iteration}, BMU_manager_state) ->
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
     
+handle_call({set_neurons_worker_list, Neurons_worker_list}, _From, BMU_manager_state) ->
+    {reply, ok, BMU_manager_state#bmu_manager_state{neurons_worker_list = Neurons_worker_list}};
 handle_call(get_bmu, _From, BMU_manager_state) ->
     {reply, BMU_manager_state#bmu_manager_state.bmu_coordinates, BMU_manager_state};
 handle_call(get_state, _From, BMU_manager_state) ->
