@@ -9,24 +9,53 @@
 -export([neuron_spectrum_distance/2, get_bmu/1, get_state/1, set_iteration/2]).
 
 -record(bmu_manager_state, {
-    BMU_coordinates = [], % The som_x, som_y coordinates of the best matching unit
-    BMU_spectrum_metadata = [], % The identifier of the spectrum associated with the BMU, e.g. mjd, plateid, fiberid or objid
+    bmu_coordinates = [], % The som_x, som_y coordinates of the best matching unit
+    bmu_spectrum_metadata = [], % The identifier of the spectrum associated with the BMU, e.g. mjd, plateid, fiberid or objid
     shortest_distance = 576460752303423487, %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
     iteration = 0, %iteration step
     max_iteration = 200 %maximum number of iterations
 }).
 
 start(Server_name, Iteration, Max_iteration) ->
-    gen_server:start(Server_name, ?MODULE, [Iteration, Max_iteration, 1000000, [], []], []). 
+    gen_server:start(
+        Server_name, 
+        ?MODULE, 
+        #bmu_manager_state{
+            iteration = Iteration,
+            max_iteration = Max_iteration
+        },
+        []
+    ). 
 
 start_link(Server_name, Iteration, Max_iteration) ->
-    gen_server:start_link(Server_name, ?MODULE, [Iteration, Max_iteration, 1000000, [], []], []).
-
+    gen_server:start_link(
+        Server_name, 
+        ?MODULE, 
+        #bmu_manager_state{
+            iteration = Iteration,
+            max_iteration = Max_iteration
+        },
+        []
+    ).
 start(Iteration, Max_iteration) ->
-    gen_server:start(?MODULE, [Iteration, Max_iteration, 1000000, [], []], []).
+    gen_server:start(
+        ?MODULE, 
+        #bmu_manager_state{
+            iteration = Iteration,
+            max_iteration = Max_iteration
+        },
+        []
+    ).
 
 start_link(Iteration, Max_iteration) ->
-    gen_server:start_link(?MODULE, [Iteration, Max_iteration, 1000000 , [], []], []).
+    gen_server:start_link(
+        ?MODULE, 
+        #bmu_manager_state{
+            iteration = Iteration,
+            max_iteration = Max_iteration
+        },
+        []
+    ).
 
 
 stop() ->
@@ -50,7 +79,7 @@ neuron_spectrum_distance(Result_receiver_name, Data
          %~ Spectrum_neuron_distance,
     %~ ]
     ) ->
-        gen_server:cast(Result_receiver_name, Data).
+        gen_server:cast(Result_receiver_name, {intermediate, Data}).
 
 get_bmu(Result_receiver_name) ->
     gen_server:call(Result_receiver_name, get_bmu).
@@ -63,19 +92,26 @@ set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
 
-handle_cast([Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance], [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]) ->
-    case Spectrum_neuron_distance < Shortest_distance of
-        true -> {noreply, [Iteration, Max_iteration, Spectrum_neuron_distance, Neuron_coordinates, Spectrum_metadata]};
-        false -> {noreply, [Iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]}
+handle_cast({intermediate, [Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance]}, BMU_manager_state) ->
+    case Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance of
+        true -> 
+            {noreply, 
+                BMU_manager_state#bmu_manager_state{
+                    shortest_distance = Spectrum_neuron_distance,
+                    bmu_coordinates = Neuron_coordinates,
+                    bmu_spectrum_metadata = Spectrum_metadata
+                }
+            };
+        false -> 
+            {noreply, BMU_manager_state}
     end;
-handle_cast({set_iteration, New_iteration}, [_Old_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]) ->
-    {noreply, [New_iteration, Max_iteration, Shortest_distance, BMU_coordinates, BMU_spectrum_metadata]};
+handle_cast({set_iteration, New_iteration}, BMU_manager_state) ->
+    {noreply, BMU_manager_state#bmu_manager_state{iteration = New_iteration} };
     
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
     
-handle_call(get_bmu, _From, State) ->
-    [_Iteration, _Max_iteration, _Shortest_distance, BMU_coordinates, _BMU_spectrum_metadata] = State,
-    {reply, BMU_coordinates, State};
-handle_call(get_state, _From, State) ->
-    {reply, State, State}.
+handle_call(get_bmu, _From, BMU_manager_state) ->
+    {reply, BMU_manager_state#bmu_manager_state.bmu_coordinates, BMU_manager_state};
+handle_call(get_state, _From, BMU_manager_state) ->
+    {reply, BMU_manager_state, BMU_manager_state}.
