@@ -8,7 +8,13 @@
 -export([init/1]).
 -export([neuron_spectrum_distance/2, get_bmu/1, get_state/1, set_iteration/2]).
 
-
+-record(bmu_manager_state, {
+    BMU_coordinates = [], % The som_x, som_y coordinates of the best matching unit
+    BMU_spectrum_metadata = [], % The identifier of the spectrum associated with the BMU, e.g. mjd, plateid, fiberid or objid
+    shortest_distance = 576460752303423487, %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
+    iteration = 0, %iteration step
+    max_iteration = 200 %maximum number of iterations
+}).
 
 start(Server_name, Iteration, Max_iteration) ->
     gen_server:start(Server_name, ?MODULE, [Iteration, Max_iteration, 1000000, [], []], []). 
