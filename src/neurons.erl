@@ -130,6 +130,7 @@ set_iteration(Server_name, New_iteration) ->
 handle_cast(
     {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}, 
     [Neurons, Neuron_worker_state]) ->
+        %% FIXME: I want this with tail recursion, not map
         NewNeurons =
             lists:map(fun(Neuron) ->
                 Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
