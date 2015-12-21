@@ -89,7 +89,7 @@ terminate(_Reason, _Neuron_state) ->
 
 
 init(State) ->
-    gen_event:add_handler(neuron_event_manager, {neuron_event_handler, self()}, [{pid, self()}]),
+    gen_event:add_handler(neuron_event_manager, {neuron_event_handler, {neuron, self()}}, [{pid, self()}]),
     gen_event:add_handler(iteration_event_manager, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
 
     [First_neuron, Last_neuron] = State#neuron_worker_state.neuron_coordinate_range,
@@ -153,7 +153,8 @@ handle_cast(
         bmu_manager:neuron_spectrum_distance(Result_receiver_name,
             [Min_spectrum_neuron_distance_coordinates, 
                  Spectrum_metadata, 
-                 Min_spectrum_neuron_distance
+                 Min_spectrum_neuron_distance,
+                 self()
             ]
         ),
         {noreply, [NewNeurons, Neuron_worker_state]}
