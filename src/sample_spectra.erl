@@ -19,7 +19,7 @@ make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_fo
     ->
         lists:foreach(
             fun([X,Y]) -> 
-                FileName=string:join([integer_to_list(Y*MaxX+X), ".spec"], ""),
+                FileName=string:join(["spec-", integer_to_list(Y*MaxX+X), "-", integer_to_list(X+Y), "-", integer_to_list(X), ".spec"], ""),
                 %erlang:display({debug, sample_spectra, [X,Y], X*(Y+1)+X}),
                 OutputFile=string:join([BaseDirectory, "/", FileName], ""),
                 %erlang:display({debug, sample_spectra, write_to_file, OutputFile}),
@@ -32,7 +32,7 @@ make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_fo
                     binary ->
                         ok = write_sample_spectrum_to_binary_file(
                             OutputFile, 
-                            term_to_binary(make_sine_spectrum(SpectrumLength))
+                            term_to_binary([[Y*MaxX + X, X+Y, X], make_sine_spectrum(SpectrumLength)])
                         )
                 end
             end,
