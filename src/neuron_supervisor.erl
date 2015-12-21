@@ -6,11 +6,11 @@
 -export([get_x_y_from_sequence/2]).
 
 
-% @doc Example start command: neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 100, 100, 0}}).
+% @doc Example start command: neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 0}}).
 
 start_link(Server_name, Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+          {neuron_coordinates, Next_free_neuron}
         }
     ) ->
     supervisor:start_link(
@@ -18,28 +18,28 @@ start_link(Server_name, Number_of_workers_per_supervisor,
         ?MODULE, 
         [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+                {neuron_coordinates, Next_free_neuron}
             }
         ]
     ).
 
 start_link(Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+          {neuron_coordinates, Next_free_neuron}
         }
     ) ->
     supervisor:start_link(
         ?MODULE, 
         [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+                {neuron_coordinates, Next_free_neuron}
             }
         ]
     ).
 
 start(Server_name, Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+          {neuron_coordinates, Next_free_neuron}
         }
     ) ->
     supervisor:start(
@@ -47,21 +47,21 @@ start(Server_name, Number_of_workers_per_supervisor,
         ?MODULE, 
         [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+                {neuron_coordinates, Next_free_neuron}
             }
         ]
     ).
 
 start(Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
-          {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+          {neuron_coordinates, Next_free_neuron}
         }
     ) ->
     supervisor:start(
         ?MODULE, 
         [Number_of_workers_per_supervisor, 
             {child_specs, Iteration, Max_iteration, 
-                {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+                {neuron_coordinates, Next_free_neuron}
             }
         ]
     ).
@@ -75,7 +75,7 @@ get_x_y_from_sequence(X_max, Sequence_number) ->
 
 init([Number_of_workers_per_supervisor, 
         {child_specs, Iteration, Max_iteration, 
-            {neuron_coordinates, X_max, Y_max, Next_free_neuron}
+            {neuron_coordinates, Next_free_neuron}
         }
     ]) ->
     
@@ -88,8 +88,9 @@ init([Number_of_workers_per_supervisor,
     %start iteration event manager
     iteration_event_handler:start_link({local, iteration_event_manager}),
     
-    %start spectrum dispatcher
+    %start spectrum dispatcher and determine SOM size from number of spectra files
     spectrum_dispatcher:start_link({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/", binary, 1}, Iteration, Max_iteration),
+    [X_max, Y_max] = spectrum_dispatcher:get_minimum_som_dimensions(spectrum_dispatcher),
     
     %Start neuron event manager
     neuron_event_handler:start_link({local, neuron_event_manager}),
