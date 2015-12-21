@@ -42,6 +42,7 @@ next_learning_step() ->
 handle_call(next_learning_step, _From, State) ->
     %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu(bmu_manager)}),
     neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu(bmu_manager)}), 
+    neuron_dispatcher:next_learning_step(),
     {reply, 
      ok,
      State}.

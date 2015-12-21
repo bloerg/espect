@@ -76,6 +76,9 @@ get_number_of_spectra(Server_name) ->
 set_iteration(Server_name, New_iteration) ->
     gen_server:call(Server_name, {set_iteration, New_iteration}).
     
+next_learning_step() ->
+    gen_server:call(?MODULE, next_learning_step).
+    
 handle_cast(stop, Spectrum_dispatcher_state) ->
     {stop, normal, Spectrum_dispatcher_state}.
 
@@ -136,6 +139,8 @@ handle_call(
          [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]
         };
 handle_call({set_iteration, New_iteration}, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, _Iteration, Max_iteration]) ->
-    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, New_iteration, Max_iteration]}.
+    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, New_iteration, Max_iteration]};
+handle_call(next_learning_step, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, Iteration, Max_iteration]) ->
+    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, Iteration, Max_iteration]}.
 
 
