@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1, set_iteration/2]).
+-export([get_spectrum/1, get_spectrum_with_id/1, set_iteration/2]).
 %-export([update_iteration/1)].
 
 
@@ -58,6 +58,9 @@ init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteratio
 get_spectrum(Server_name) ->
     gen_server:call(Server_name, get_spectrum).
 
+get_spectrum_with_id(Server_name) ->
+    gen_server:call(Server_name, get_spectrum_with_id).
+    
 set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
     
@@ -72,14 +75,32 @@ handle_call(
     get_spectrum, _From, [{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
         Reply = spectrum_handling:read_spectrum_from(random_sine, Spectrum_length),
         {reply, Reply, [{random_sine, Spectrum_length}, Iteration, Max_iteration]};
+
+%returns list of lists: [Spectrum_id, Spectrum]
 handle_call(
-    get_spectrum, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+    get_spectrum_with_id, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
         Reply = spectrum_handling:read_spectrum_from(
                     filesystem, 
                     string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
                     File_format
         ),
         {reply, Reply, [{filesystem, Directory, File_format, Spectra_file_list, 
+                            case Spec_list_index == length(Spectra_file_list) of
+                                true -> _Next_iteration = iteration_state_server:next_iteration(iteration_state_server),
+                                        1;
+                                false -> Spec_list_index +1 
+                            end
+                        }, Iteration, Max_iteration
+                        ]
+        };
+handle_call(
+    get_spectrum, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+        [_Spectrum_id, Spectrum] = spectrum_handling:read_spectrum_from(
+            filesystem, 
+            string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
+            File_format
+        ),
+        {reply, Spectrum, [{filesystem, Directory, File_format, Spectra_file_list, 
                             case Spec_list_index == length(Spectra_file_list) of
                                 true -> _Next_iteration = iteration_state_server:next_iteration(iteration_state_server),
                                         1;
