@@ -8,7 +8,7 @@
 -export([init/1]).
 -export([get_neuron_spectrum_distance/3, get_neuron_spectrum_distance/4]).
 -export([set_bmu/2, set_iteration/2]).
--export([update_neuron/3, update_neuron/4]).
+-export([update_neuron/2, update_neuron/3]).
 
 %for testing, remove later
 -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
@@ -118,11 +118,11 @@ set_bmu(Server_name, New_BMU) ->
     gen_server:call(Server_name, {set_bmu, New_BMU}).
 
 %% @doc calls the function to compute the new neuron vector
-update_neuron(Server_name, BMU_spectrum, BMU_coordinates) ->
-    gen_server:call(Server_name, {update_neuron, BMU_spectrum, BMU_coordinates}).
+update_neuron(Server_name, BMU_neuron_coordinates) ->
+    gen_server:call(Server_name, {update_neuron, BMU_neuron_coordinates}).
 
-update_neuron(async, Server_name, BMU_spectrum, BMU_coordinates) ->
-    gen_server:cast(Server_name, {update_neuron, BMU_spectrum, BMU_coordinates}).
+update_neuron(async, Server_name, BMU_neuron_coordinates) ->
+    gen_server:cast(Server_name, {update_neuron, BMU_neuron_coordinates}).
 
 set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
@@ -153,12 +153,36 @@ handle_cast(
         bmu_manager:neuron_spectrum_distance(Result_receiver_name,
             [Min_spectrum_neuron_distance_coordinates, 
                  Spectrum_metadata, 
-                 Min_spectrum_neuron_distance,
-                 self()
+                 Min_spectrum_neuron_distance
             ]
         ),
-        {noreply, [NewNeurons, Neuron_worker_state]}
-.
+        {noreply, [NewNeurons, Neuron_worker_state]};
+
+handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_state]) ->
+    NewNeurons =
+        %% FIXME: I want this with tail recursion, not map
+        lists:map(fun(Neuron) ->
+                Neuron#neuron{
+                    neuron_vector = vector_operations:vector_sum(
+                        Neuron#neuron.neuron_vector,
+                        vector_operations:scalar_multiplication(
+                            neighbourhood_function1(
+                                Neuron_worker_state#neuron_worker_state.iteration, 
+                                Neuron_worker_state#neuron_worker_state.max_iteration, 
+                                Neuron#neuron.neuron_coordinates, 
+                                BMU_neuron_coordinates
+                            ),
+                            %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
+                            Neuron#neuron.last_spectrum_neuron_vector_difference
+                        )
+                    )
+                }
+        end,
+        Neurons
+        ),
+    {noreply, [NewNeurons, Neuron_worker_state]}.
+
+
 
 %~ handle_cast({update_neuron, BMU_spectrum, BMU_coordinates}, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
     %~ {noreply, [Neuron_coordinates, 

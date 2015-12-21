@@ -98,7 +98,7 @@ neuron_spectrum_distance(Result_receiver_name, Data
          %~ Neuron_worker_pid
     %~ ]
     ) ->
-        gen_server:cast(Result_receiver_name, {intermediate, Data}).
+        gen_server:call(Result_receiver_name, {intermediate, Data}).
 
 get_bmu(Result_receiver_name) ->
     gen_server:call(Result_receiver_name, get_bmu).
@@ -116,34 +116,7 @@ set_neurons_worker_list(Server_name, Neurons_worker_list) ->
 handle_cast({set_iteration, New_iteration}, BMU_manager_state) ->
     {noreply, BMU_manager_state#bmu_manager_state{iteration = New_iteration} };
     
-handle_cast({intermediate, [Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance, From_pid]},
-    BMU_manager_state) ->
-        % remove the pid of the sending neurons worker from the list of
-        % registered workers. This is to keep track of the responses of the neuron workers
-        Neurons_worker_list_new = lists:takewhile(
-            fun(Pid) -> Pid =/= From_pid end, 
-            BMU_manager_state#bmu_manager_state.neurons_worker_list
-        ),
-        if length(Neurons_worker_list_new) == 0 ->
-            erlang:display("fixme: function to start neuron update")
-        end,
-        case Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance of
-            true -> 
-                {noreply, 
-                    BMU_manager_state#bmu_manager_state{
-                        shortest_distance = Spectrum_neuron_distance,
-                        bmu_coordinates = Neuron_coordinates,
-                        bmu_spectrum_metadata = Spectrum_metadata,
-                        neurons_worker_list = Neurons_worker_list_new
 
-                    }
-                };
-            false -> 
-                {noreply, BMU_manager_state#bmu_manager_state{
-                        neurons_worker_list = Neurons_worker_list_new
-                    }
-                }
-        end;
     
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
@@ -153,5 +126,41 @@ handle_call({set_neurons_worker_list, Neurons_worker_list}, _From, BMU_manager_s
 handle_call(get_bmu, _From, BMU_manager_state) ->
     {reply, BMU_manager_state#bmu_manager_state.bmu_coordinates, BMU_manager_state};
 handle_call(get_state, _From, BMU_manager_state) ->
-    {reply, BMU_manager_state, BMU_manager_state}.
+    {reply, BMU_manager_state, BMU_manager_state};
+    
+handle_call({intermediate, [Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance]}, From,
+    BMU_manager_state) ->
+        {From_pid, _From_tag} = From,
+        % remove the pid of the sending neurons worker from the list of
+        % registered workers. This is to keep track of the responses of the neuron workers
+        Neurons_worker_list_new = lists:takewhile(
+            fun(Pid) -> Pid =/= From_pid end, 
+            BMU_manager_state#bmu_manager_state.neurons_worker_list
+        ),
+        case Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance of
+            true -> 
+                {   reply, 
+                    case length(Neurons_worker_list_new) of 
+                        0 -> learning_step_manager:next_learning_step();
+                        _Other -> ok
+                    end, 
+                    BMU_manager_state#bmu_manager_state{
+                        shortest_distance = Spectrum_neuron_distance,
+                        bmu_coordinates = Neuron_coordinates,
+                        bmu_spectrum_metadata = Spectrum_metadata,
+                        neurons_worker_list = Neurons_worker_list_new
+
+                    }
+                };
+            false -> 
+                {   reply, 
+                    case length(Neurons_worker_list_new) of 
+                        0 -> learning_step_manager:next_learning_step();
+                        _Other -> ok
+                    end, 
+                    BMU_manager_state#bmu_manager_state{
+                        neurons_worker_list = Neurons_worker_list_new
+                    }
+                }
+        end.
 

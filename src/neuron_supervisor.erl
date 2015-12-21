@@ -81,6 +81,9 @@ init([Number_of_workers_per_supervisor,
     
     %start iteration state server
     iteration_state_server:start({local, iteration_state_server}, Iteration, Max_iteration),
+    
+    %start learning step manager
+    learning_step_manager:start({local, learning_step_manager}),
 
     %start iteration event manager
     iteration_event_handler:start_link({local, iteration_event_manager}),
