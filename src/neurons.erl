@@ -135,23 +135,16 @@ handle_cast(
         %% FIXME: I want this with tail recursion, not map
         NewNeurons =
             lists:map(fun(Neuron) ->
-                case Neuron#neuron.neuron_vector of 
-                    [] -> Neuron;
-                    _Other ->
-                        Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
-                        Neuron#neuron{
-                            last_spectrum_neuron_vector_difference = Neuron_vector_difference
-                        }
-                end
+                Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
+                Neuron#neuron{
+                    last_spectrum_neuron_vector_difference = Neuron_vector_difference
+                }
             end,
             Neurons
             ),
         [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] = 
             lists:foldl(fun(Neuron, [Min_distance, Min_distance_neuron_coordinates]) ->
-                case Neuron#neuron.last_spectrum_neuron_vector_difference of 
-                    [] -> Spectrum_vector_distance = 576460752303423487;
-                    _Other_vector -> Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference)
-                end,
+                Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference),
                 % We don't want to consider a neuron twice. So we match against the bmu. If the neuron already is a BMU, skip it and just return the already known minimum value.
                 case [Spectrum_vector_distance < Min_distance, binary_to_term(Neuron#neuron.bmu_to_spectrum_id)] of
                     [false, [-1, -1, -1]] -> [Min_distance, Min_distance_neuron_coordinates]; 
