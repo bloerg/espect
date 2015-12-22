@@ -171,7 +171,7 @@ handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_dis
                     New_bmu_manager_state#bmu_manager_state.bmu_coordinates, 
                     New_bmu_manager_state#bmu_manager_state.bmu_spectrum_metadata
                 ),
-                ok = learning_step_manager:next_learning_step();
+                ok = learning_step_manager:compare_complete();
             Other_number -> 
                 erlang:display(Other_number),
                 ok
