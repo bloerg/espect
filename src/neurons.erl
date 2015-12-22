@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 %~ -export([handle_call/3]).
 -export([init/1]).
--export([get_neuron_spectrum_distance/3, get_neuron_spectrum_distance/4]).
+-export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/2, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
 
@@ -107,12 +107,12 @@ init(State) ->
     }.
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
-get_neuron_spectrum_distance(Server_name, Spectrum, Spectrum_metadata) ->
-    gen_server:call(Server_name, {compare, Spectrum, Spectrum_metadata}).
+get_neuron_spectrum_distance(Server_name, Spectrum_with_id) ->
+    gen_server:call(Server_name, {compare, Spectrum_with_id}).
     
 %% @doc async vector distance computing
-get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectrum, Spectrum_metadata) ->
-    gen_server:cast(Server_name, {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}).
+get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectrum_with_id) ->
+    gen_server:cast(Server_name, {{async, Result_receiver_name}, {compare, Spectrum_with_id}}).
 
 set_bmu(Server_name, New_BMU) ->
     gen_server:call(Server_name, {set_bmu, New_BMU}).
@@ -128,8 +128,9 @@ set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
 handle_cast(
-    {{async, Result_receiver_name}, {compare, Spectrum, Spectrum_metadata}}, 
+    {{async, Result_receiver_name}, {compare, Spectrum_with_id}}, 
     [Neurons, Neuron_worker_state]) ->
+        [Spectrum_metadata, Spectrum] = Spectrum_with_id,
         %% FIXME: I want this with tail recursion, not map
         NewNeurons =
             lists:map(fun(Neuron) ->
