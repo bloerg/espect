@@ -167,6 +167,7 @@ handle_cast(
         {noreply, [NewNeurons, Neuron_worker_state]};
 
 handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_state]) ->
+    erlang:display({"updating neurons with: ",  BMU_neuron_coordinates}),
     NewNeurons =
         %% FIXME: I want this with tail recursion, not map
         lists:map(fun(Neuron) ->
