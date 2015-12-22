@@ -146,11 +146,11 @@ handle_call(
                     File_format
                 );
             %% if all spectra are dispatched but neurons keep asking,
-            %% return the same spectra, but reversed
+            %% return random spectras from the list of same spectra, but reversed
             true ->
                 [_Spectrum_id, Temp_spectrum] = spectrum_handling:read_spectrum_from(
                     filesystem, 
-                    string:concat(Directory, lists:nth(length(Spectra_file_list) - Spec_list_index, Spectra_file_list)), 
+                    string:concat(Directory, lists:nth(random:uniform(length(Spectra_file_list)), Spectra_file_list)), 
                     File_format
                 ),
                 Spectrum = lists:reverse(Temp_spectrum)
