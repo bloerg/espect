@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1, get_spectrum_with_id/1, set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
+-export([get_spectrum/1, get_spectrum_with_id/1, set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1, next_learning_step/0]).
 %-export([update_iteration/1)].
 
 
