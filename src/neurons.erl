@@ -130,7 +130,7 @@ set_iteration(Server_name, New_iteration) ->
 handle_cast(
     {{async, Result_receiver_name}, {compare, Spectrum_with_id}}, 
     [Neurons, Neuron_worker_state]) ->
-        erlang:display({"comparing spectrum: ", Spectrum_with_id}),
+        %~ erlang:display({"comparing spectrum: ", Spectrum_with_id}),
         [Spectrum_metadata, Spectrum] = Spectrum_with_id,
         %% FIXME: I want this with tail recursion, not map
         NewNeurons =
@@ -154,10 +154,10 @@ handle_cast(
             end,
             [576460752303423487, []], NewNeurons),  %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
 
-        erlang:display({"sending bmu candidate to bmu_manager: ", [Min_spectrum_neuron_distance_coordinates, 
-                 Spectrum_metadata, 
-                 Min_spectrum_neuron_distance
-            ]}), 
+        %~ erlang:display({"sending bmu candidate to bmu_manager: ", [Min_spectrum_neuron_distance_coordinates, 
+                 %~ Spectrum_metadata, 
+                 %~ Min_spectrum_neuron_distance
+            %~ ]}), 
         bmu_manager:neuron_spectrum_distance(Result_receiver_name,
             [Min_spectrum_neuron_distance_coordinates, 
                  Spectrum_metadata, 
@@ -196,7 +196,7 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
 
 handle_cast(
     {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, [Neurons, Neuron_worker_state]) ->
-        erlang:display({"setbmu", BMU_neuron_coordinates, BMU_spectrum_id}),
+        %~ erlang:display({"setbmu", BMU_neuron_coordinates, BMU_spectrum_id}),
         {noreply, [
             lists:map(fun(Neuron) ->
                     case Neuron#neuron.neuron_coordinates of
