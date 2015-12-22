@@ -98,7 +98,7 @@ init(State) ->
     {ok, [
             [ #neuron {
                     %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
-                    neuron_vector = spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher),
+                    neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(State#neuron_worker_state.spectrum_dispatcher),
                     neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
                 } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
             ],
