@@ -7,7 +7,7 @@
 -export([handle_call/3]).
 -export([init/1]).
 -export([neuron_spectrum_distance/2, get_bmu/1, get_state/1, set_iteration/2]).
--export([set_neurons_worker_list/2]).
+-export([set_neurons_worker_list/2, next_learning_step/0]).
 
 -record(bmu_manager_state, {
     bmu_coordinates = [], % The som_x, som_y coordinates of the best matching unit
@@ -93,7 +93,7 @@ filter_neurons_worker_list(Neurons_worker_list, Filtered_list) ->
 neuron_spectrum_distance(Result_receiver_name, Data
     %~ % i. e.
     %~ [Neuron_coordinates, 
-         %~ Spectrum_metadata, 
+         %~ Spectrum_id, 
          %~ Spectrum_neuron_distance,
          %~ Neuron_worker_pid
     %~ ]
@@ -113,10 +113,19 @@ set_iteration(Server_name, New_iteration) ->
 set_neurons_worker_list(Server_name, Neurons_worker_list) ->
     gen_server:call(Server_name, {set_neurons_worker_list, Neurons_worker_list}).
 
+next_learning_step() ->
+    gen_server:cast(?MODULE, next_learning_step).
+
 handle_cast({set_iteration, New_iteration}, BMU_manager_state) ->
     {noreply, BMU_manager_state#bmu_manager_state{iteration = New_iteration} };
-    
-
+handle_cast(next_learning_step, BMU_manager_state) ->
+    {noreply, 
+        BMU_manager_state#bmu_manager_state{
+            bmu_coordinates = [],
+            bmu_spectrum_metadata = [],
+            shortest_distance = 576460752303423487
+        }
+    };
     
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
@@ -128,7 +137,7 @@ handle_call(get_bmu, _From, BMU_manager_state) ->
 handle_call(get_state, _From, BMU_manager_state) ->
     {reply, BMU_manager_state, BMU_manager_state};
     
-handle_call({intermediate, [Neuron_coordinates, Spectrum_metadata, Spectrum_neuron_distance]}, From,
+handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_distance]}, From,
     BMU_manager_state) ->
         {From_pid, _From_tag} = From,
         % remove the pid of the sending neurons worker from the list of
@@ -137,30 +146,37 @@ handle_call({intermediate, [Neuron_coordinates, Spectrum_metadata, Spectrum_neur
             fun(Pid) -> Pid =/= From_pid end, 
             BMU_manager_state#bmu_manager_state.neurons_worker_list
         ),
+        
         case Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance of
             true -> 
-                {   reply, 
-                    case length(Neurons_worker_list_new) of 
-                        0 -> learning_step_manager:next_learning_step();
-                        _Other -> ok
-                    end, 
+                New_bmu_manager_state = 
                     BMU_manager_state#bmu_manager_state{
                         shortest_distance = Spectrum_neuron_distance,
                         bmu_coordinates = Neuron_coordinates,
-                        bmu_spectrum_metadata = Spectrum_metadata,
+                        bmu_spectrum_metadata = Spectrum_id,
                         neurons_worker_list = Neurons_worker_list_new
 
-                    }
-                };
+                    };
             false -> 
-                {   reply, 
-                    case length(Neurons_worker_list_new) of 
-                        0 -> learning_step_manager:next_learning_step();
-                        _Other -> ok
-                    end, 
+                New_bmu_manager_state = 
                     BMU_manager_state#bmu_manager_state{
                         neurons_worker_list = Neurons_worker_list_new
                     }
-                }
-        end.
+        end,
+        
+        case length(Neurons_worker_list_new) of
+            0 ->
+                ok = neurons:set_bmu(
+                    From_pid, 
+                    New_bmu_manager_state#bmu_manager_state.bmu_coordinates, 
+                    New_bmu_manager_state#bmu_manager_state.bmu_spectrum_metadata
+                ),
+                ok = learning_step_manager:next_learning_step();
+            Other_number -> 
+                erlang:display(Other_number),
+                ok
+        end,
+        
+        {reply, ok, New_bmu_manager_state}.
+
 

@@ -6,7 +6,8 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1, get_spectrum_with_id/1, set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1, next_learning_step/0]).
+-export([get_spectrum/1, get_spectrum_with_id/1, set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
+-export([reset_speclist_index/0, next_learning_step/0]).
 %-export([update_iteration/1)].
 
 
@@ -79,6 +80,9 @@ set_iteration(Server_name, New_iteration) ->
 next_learning_step() ->
     gen_server:call(?MODULE, next_learning_step).
     
+reset_speclist_index() ->
+    gen_server:call(?MODULE, reset_speclist_index).
+    
 handle_cast(stop, Spectrum_dispatcher_state) ->
     {stop, normal, Spectrum_dispatcher_state}.
 
@@ -140,7 +144,11 @@ handle_call(
         };
 handle_call({set_iteration, New_iteration}, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, _Iteration, Max_iteration]) ->
     {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, New_iteration, Max_iteration]};
-handle_call(next_learning_step, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, Iteration, Max_iteration]) ->
-    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, Iteration, Max_iteration]}.
+
+handle_call(reset_speclist_index, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, Iteration, Max_iteration]) ->
+    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, Iteration, Max_iteration]};
+
+handle_call(next_learning_step, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]}.
 
 

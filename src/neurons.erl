@@ -7,7 +7,7 @@
 %~ -export([handle_call/3]).
 -export([init/1]).
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
--export([set_bmu/2, set_iteration/2]).
+-export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
 
 %for testing, remove later
@@ -114,8 +114,8 @@ get_neuron_spectrum_distance(Server_name, Spectrum_with_id) ->
 get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectrum_with_id) ->
     gen_server:cast(Server_name, {{async, Result_receiver_name}, {compare, Spectrum_with_id}}).
 
-set_bmu(Server_name, New_BMU) ->
-    gen_server:call(Server_name, {set_bmu, New_BMU}).
+set_bmu(Neurons_worker_name, Neuron_coordinates, Spectrum_id) ->
+    gen_server:cast(Neurons_worker_name, {set_bmu, Neuron_coordinates, Spectrum_id}).
 
 %% @doc calls the function to compute the new neuron vector
 update_neuron(Server_name, BMU_neuron_coordinates) ->
@@ -130,27 +130,41 @@ set_iteration(Server_name, New_iteration) ->
 handle_cast(
     {{async, Result_receiver_name}, {compare, Spectrum_with_id}}, 
     [Neurons, Neuron_worker_state]) ->
+        erlang:display({"comparing spectrum: ", Spectrum_with_id}),
         [Spectrum_metadata, Spectrum] = Spectrum_with_id,
         %% FIXME: I want this with tail recursion, not map
         NewNeurons =
             lists:map(fun(Neuron) ->
-                Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
-                    Neuron#neuron{
-                        last_spectrum_neuron_vector_difference = Neuron_vector_difference
-                    }
+                case Neuron#neuron.neuron_vector of 
+                    [] -> Neuron;
+                    _Other ->
+                        Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
+                        Neuron#neuron{
+                            last_spectrum_neuron_vector_difference = Neuron_vector_difference
+                        }
+                end
             end,
             Neurons
             ),
         [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] = 
             lists:foldl(fun(Neuron, [Min_distance, Min_distance_neuron_coordinates]) ->
-                Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference),
-                case Spectrum_vector_distance < Min_distance of
-                    true -> [Spectrum_vector_distance, Neuron#neuron.neuron_coordinates];
-                    false -> [Min_distance, Min_distance_neuron_coordinates]
+                case Neuron#neuron.last_spectrum_neuron_vector_difference of 
+                    [] -> Spectrum_vector_distance = 576460752303423487;
+                    _Other_vector -> Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference)
+                end,
+                % We don't want to consider a neuron twice. So we match against the bmu. If the neuron already is a BMU, skip it and just return the already known minimum value.
+                case [Spectrum_vector_distance < Min_distance, binary_to_term(Neuron#neuron.bmu_to_spectrum_id)] of
+                    [false, [-1, -1, -1]] -> [Min_distance, Min_distance_neuron_coordinates]; 
+                    [true,  [-1, -1, -1]] -> [Spectrum_vector_distance, Neuron#neuron.neuron_coordinates];
+                    _Other_list -> [Min_distance, Min_distance_neuron_coordinates]
                 end
             end,
             [576460752303423487, []], NewNeurons),  %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
 
+        erlang:display({"sending bmu candidate to bmu_manager: ", [Min_spectrum_neuron_distance_coordinates, 
+                 Spectrum_metadata, 
+                 Min_spectrum_neuron_distance
+            ]}), 
         bmu_manager:neuron_spectrum_distance(Result_receiver_name,
             [Min_spectrum_neuron_distance_coordinates, 
                  Spectrum_metadata, 
@@ -163,27 +177,44 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
     NewNeurons =
         %% FIXME: I want this with tail recursion, not map
         lists:map(fun(Neuron) ->
-                Neuron#neuron{
-                    neuron_vector = vector_operations:vector_sum(
-                        Neuron#neuron.neuron_vector,
-                        vector_operations:scalar_multiplication(
-                            neighbourhood_function1(
-                                Neuron_worker_state#neuron_worker_state.iteration, 
-                                Neuron_worker_state#neuron_worker_state.max_iteration, 
-                                Neuron#neuron.neuron_coordinates, 
-                                BMU_neuron_coordinates
-                            ),
-                            %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
-                            Neuron#neuron.last_spectrum_neuron_vector_difference
-                        )
-                    )
-                }
+                case length(Neuron#neuron.neuron_vector) of 
+                    0 -> Neuron;
+                    _Other ->
+                        Neuron#neuron{
+                            neuron_vector = vector_operations:vector_sum(
+                                Neuron#neuron.neuron_vector,
+                                vector_operations:scalar_multiplication(
+                                    neighbourhood_function1(
+                                        Neuron_worker_state#neuron_worker_state.iteration, 
+                                        Neuron_worker_state#neuron_worker_state.max_iteration, 
+                                        Neuron#neuron.neuron_coordinates, 
+                                        BMU_neuron_coordinates
+                                    ),
+                                    %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
+                                    Neuron#neuron.last_spectrum_neuron_vector_difference
+                                )
+                            )
+                        }
+                end
         end,
         Neurons
         ),
-    {noreply, [NewNeurons, Neuron_worker_state]}.
+    {noreply, [NewNeurons, Neuron_worker_state]};
 
-
+handle_cast(
+    {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, [Neurons, Neuron_worker_state]) ->
+        erlang:display({"setbmu", BMU_neuron_coordinates, BMU_spectrum_id}),
+        {noreply, [
+            lists:map(fun(Neuron) ->
+                    case Neuron#neuron.neuron_coordinates of
+                        BMU_neuron_coordinates -> Neuron#neuron{bmu_to_spectrum_id = term_to_binary(BMU_spectrum_id) };
+                        _Other -> Neuron
+                    end
+                end,
+            Neurons
+            ), 
+            Neuron_worker_state
+        ]}.
 
 %~ handle_cast({update_neuron, BMU_spectrum, BMU_coordinates}, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
     %~ {noreply, [Neuron_coordinates, 
