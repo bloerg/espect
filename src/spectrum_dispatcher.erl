@@ -11,6 +11,14 @@
 -export([reset_speclist_index/0, next_learning_step/0]).
 %-export([update_iteration/1)].
 
+-record(spectrum_dispatcher_state, {
+    spectra_source = {}, % The spectra source, would be set to filesystem in production
+    iteration = 0, %iteration step
+    max_iteration = 200, %maximum number of iterations
+    spectra_list_unused = [], % Contains spectra filenames, when delivering a spectrum to a neuron the filename is removed and put into spectra_list_used
+    spectra_list_used = [] % This list contains the spectra file names already delivered to neurons in an iteration step. Its content will be copied back to spectra_list_unused upon iteration step update
+}).
+
 
 % @doc Example start: spectrum_dispatcher:start({local, spectrum_dispatcher},{random_sine, 256}, 0, 200).
 %                     spectrum_dispatcher:start({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/", binary, 1}, 0, 200).
@@ -39,21 +47,21 @@ terminate(_Reason, _Spectrum_dispatcher_state) ->
     .
 
 
-init([{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
-    {ok, [{random_sine, Spectrum_length}, Iteration, Max_iteration]};
-
 init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteration])
     when Start_index > 0 ->
-    gen_event:add_handler(iteration_event_manager, {?MODULE, self()}, [{pid, self()}, {module, ?MODULE}]),
-    {ok, [
-        { filesystem, Directory,
-          File_format,
-          spectrum_handling:provide_spectra_list(filesystem, Directory),
-          Start_index
-        }, 
-        Iteration, Max_iteration]
-    }
-.
+    {ok,
+        #spectrum_dispatcher_state{
+            spectra_source = { 
+              filesystem, 
+              Directory,
+              File_format,
+              Start_index
+            },
+            spectra_list_unused = spectrum_handling:provide_spectra_list(filesystem, Directory),
+            iteration = Iteration,
+            max_iteration = Max_iteration
+        }
+    }.
 
 get_minimum_som_dimensions_helper(Number_of_spectra) ->
     get_minimum_som_dimensions_helper(1, Number_of_spectra).
@@ -91,58 +99,58 @@ handle_cast(stop, Spectrum_dispatcher_state) ->
     {stop, normal, Spectrum_dispatcher_state}.
 
 
-handle_call(
-    get_spectrum, _From, [{random_sine, Spectrum_length}, Iteration, Max_iteration]) ->
-        Reply = spectrum_handling:read_spectrum_from(random_sine, Spectrum_length),
-        {reply, Reply, [{random_sine, Spectrum_length}, Iteration, Max_iteration]};
-
 %returns list of lists: [Spectrum_id, Spectrum]
 handle_call(
-    get_spectrum_with_id, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+    get_spectrum_with_id, _From, Spectrum_dispatcher_state) ->
+        {filesystem, Directory, File_format, _Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source,
         Reply = spectrum_handling:read_spectrum_from(
                     filesystem, 
-                    string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
+                    string:concat(Directory, hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), 
                     File_format
         ),
-        {reply, Reply, [{filesystem, Directory, File_format, Spectra_file_list, 
-                            case Spec_list_index == length(Spectra_file_list) of
-                                true -> _Next_iteration = iteration_state_server:next_iteration(iteration_state_server),
-                                        1;
-                                false -> Spec_list_index +1 
-                            end
-                        }, Iteration, Max_iteration
-                        ]
+        %% FIXME when List is empty tell iteration manager
+        {   reply, 
+            Reply, 
+            Spectrum_dispatcher_state#spectrum_dispatcher_state{
+                spectra_list_unused = tl(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
+                spectra_list_used = hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)
+            }
+        
         };
         
 % returns a spectrum from the filesystem as long as spectra are left
 % returns [] if all spectra where delivered in the current Iterations step
 handle_call(
-    get_spectrum, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
-        case Spec_list_index > length(Spectra_file_list) of 
-            false ->
+    get_spectrum, _From, Spectrum_dispatcher_state) ->
+        {filesystem, Directory, File_format, _Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source,
+        case length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) of 
+            0 -> Spectrum = [];
+            _Else ->
                 [_Spectrum_id, Spectrum] = spectrum_handling:read_spectrum_from(
                     filesystem, 
-                    string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
+                    string:concat(Directory, hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), 
                     File_format
-                );
-            true ->
-                Spectrum = []
+                )
         end,
         {reply, Spectrum, 
-            [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index +1}, 
-              Iteration, Max_iteration
-            ]
+            Spectrum_dispatcher_state#spectrum_dispatcher_state{
+                spectra_list_unused = tl(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
+                spectra_list_used = hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)
+            }
         };
         
 % returns a spectrum from the filesystem as long as spectra are left
 % returns zero vector with length of spectra if all spectra are delivered
 handle_call(
-    get_spectrum_for_neuron_initialization, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
-        case Spec_list_index > length(Spectra_file_list) of 
+    get_spectrum_for_neuron_initialization, _From, Spectrum_dispatcher_state) ->
+    {filesystem, Directory, File_format, Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source,
+    
+    %[{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+        case Spec_list_index > length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) of 
             false ->
                 [_Spectrum_id, Spectrum] = spectrum_handling:read_spectrum_from(
                     filesystem, 
-                    string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
+                    string:concat(Directory, lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), 
                     File_format
                 );
             %% if all spectra are dispatched but neurons keep asking,
@@ -150,36 +158,53 @@ handle_call(
             true ->
                 [_Spectrum_id, Temp_spectrum] = spectrum_handling:read_spectrum_from(
                     filesystem, 
-                    string:concat(Directory, lists:nth(random:uniform(length(Spectra_file_list)), Spectra_file_list)), 
+                    string:concat(Directory, lists:nth(random:uniform(length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), 
                     File_format
                 ),
                 Spectrum = lists:reverse(Temp_spectrum)
         end,
         {reply, Spectrum, 
-            [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index +1}, 
-              Iteration, Max_iteration
-            ]
+            Spectrum_dispatcher_state#spectrum_dispatcher_state{
+                spectra_source = {filesystem, Directory, File_format, Spec_list_index +1}
+            }
         };
 
 handle_call(
-    get_minimum_som_dimensions, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+    get_minimum_som_dimensions, _From, Spectrum_dispatcher_state) ->
         {reply, 
-         get_minimum_som_dimensions_helper(length(Spectra_file_list)), 
-         [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]
+         get_minimum_som_dimensions_helper(
+            length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) + 
+            length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)
+        ), 
+         Spectrum_dispatcher_state
         };
 handle_call(
-    get_number_of_spectra, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+    get_number_of_spectra, _From, Spectrum_dispatcher_state) ->
         {reply,
-         length(Spectra_file_list), 
-         [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]
+        length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) + 
+        length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_used), 
+        Spectrum_dispatcher_state
         };
-handle_call({set_iteration, New_iteration}, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, _Iteration, Max_iteration]) ->
-    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, New_iteration, Max_iteration]};
+handle_call({set_iteration, New_iteration}, _From, Spectrum_dispatcher_state) ->
+    {filesystem, Directory, File_format, _Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source, 
+    {reply, ok, 
+        Spectrum_dispatcher_state#spectrum_dispatcher_state{
+            spectra_source = {filesystem, Directory, File_format, 1},
+            spectra_list_unused = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_used,
+            spectra_list_used = [],
+            iteration = New_iteration
+        }
+    };
+handle_call(reset_speclist_index, _From, Spectrum_dispatcher_state) ->
+    {filesystem, Directory, File_format, _Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source, 
+    {reply, ok, 
+        Spectrum_dispatcher_state#spectrum_dispatcher_state{
+            spectra_source = {filesystem, Directory, File_format, 1}
+        }
+    };
 
-handle_call(reset_speclist_index, _From, [{filesystem, Directory, File_format, Spectra_file_list, _Spec_list_index}, Iteration, Max_iteration]) ->
-    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, 1}, Iteration, Max_iteration]};
-
-handle_call(next_learning_step, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
-    {reply, ok, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]}.
+%does nothing at the moment
+handle_call(next_learning_step, _From, Spectrum_dispatcher_state) ->
+    {reply, ok, Spectrum_dispatcher_state}.
 
 
