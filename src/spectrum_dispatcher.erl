@@ -6,7 +6,8 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1, get_spectrum_with_id/1, set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
+-export([get_spectrum/1, get_spectrum_with_id/1, get_spectrum_for_neuron_initialization/1]).
+-export([set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
 -export([reset_speclist_index/0, next_learning_step/0]).
 %-export([update_iteration/1)].
 
@@ -64,6 +65,9 @@ get_minimum_som_dimensions_helper(Edge_length, Number_of_spectra) ->
 
 get_spectrum(Server_name) ->
     gen_server:call(Server_name, get_spectrum).
+
+get_spectrum_for_neuron_initialization(Server_name) ->
+    gen_server:call(Server_name, get_spectrum_for_neuron_initialization).
 
 get_spectrum_with_id(Server_name) ->
     gen_server:call(Server_name, get_spectrum_with_id).
@@ -123,6 +127,33 @@ handle_call(
                 );
             true ->
                 Spectrum = []
+        end,
+        {reply, Spectrum, 
+            [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index +1}, 
+              Iteration, Max_iteration
+            ]
+        };
+        
+% returns a spectrum from the filesystem as long as spectra are left
+% returns zero vector with length of spectra if all spectra are delivered
+handle_call(
+    get_spectrum_for_neuron_initialization, _From, [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+        case Spec_list_index > length(Spectra_file_list) of 
+            false ->
+                [_Spectrum_id, Spectrum] = spectrum_handling:read_spectrum_from(
+                    filesystem, 
+                    string:concat(Directory, lists:nth(Spec_list_index, Spectra_file_list)), 
+                    File_format
+                );
+            %% if all spectra are dispatched but neurons keep asking,
+            %% return the same spectra, but reversed
+            true ->
+                [_Spectrum_id, Temp_spectrum] = spectrum_handling:read_spectrum_from(
+                    filesystem, 
+                    string:concat(Directory, lists:nth(length(Spectra_file_list) - Spec_list_index, Spectra_file_list)), 
+                    File_format
+                ),
+                Spectrum = lists:reverse(Temp_spectrum)
         end,
         {reply, Spectrum, 
             [{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index +1}, 
