@@ -193,6 +193,7 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
         end,
         Neurons
         ),
+    learning_step_manager:update_complete(),
     {noreply, [NewNeurons, Neuron_worker_state]};
 
 handle_cast(
