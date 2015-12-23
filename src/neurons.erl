@@ -4,7 +4,8 @@
 -export([start/5, start_link/5, start/6, start_link/6]).
 -export([stop/0, stop/1, terminate/2]).
 -export([handle_cast/2]).
-%~ -export([handle_call/3]).
+-export([handle_call/3]).
+-export([handle_info/2]).
 -export([init/1]).
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/3, set_iteration/2]).
@@ -115,7 +116,7 @@ get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectru
     gen_server:cast(Server_name, {{async, Result_receiver_name}, {compare, Spectrum_with_id}}).
 
 set_bmu(Neurons_worker_name, Neuron_coordinates, Spectrum_id) ->
-    gen_server:cast(Neurons_worker_name, {set_bmu, Neuron_coordinates, Spectrum_id}).
+    gen_server:call(Neurons_worker_name, {set_bmu, Neuron_coordinates, Spectrum_id}).
 
 %% @doc calls the function to compute the new neuron vector
 update_neuron(Server_name, BMU_neuron_coordinates) ->
@@ -167,7 +168,7 @@ handle_cast(
         {noreply, [NewNeurons, Neuron_worker_state]};
 
 handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_state]) ->
-    erlang:display({"updating neurons with: ",  BMU_neuron_coordinates}),
+    %~ io:format("Updating neurons with: ~w~n", [{bmu_coordinates, BMU_neuron_coordinates, neuron_coordinate_range, Neuron_worker_state#neuron_worker_state.neuron_coordinate_range}]),
     NewNeurons =
         %% FIXME: I want this with tail recursion, not map
         lists:map(fun(Neuron) ->
@@ -193,13 +194,13 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
         end,
         Neurons
         ),
-    learning_step_manager:update_complete(),
-    {noreply, [NewNeurons, Neuron_worker_state]};
+    learning_step_manager:update_complete(self()),
+    {noreply, [NewNeurons, Neuron_worker_state]}.
 
-handle_cast(
-    {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, [Neurons, Neuron_worker_state]) ->
-        %~ erlang:display({"setbmu", BMU_neuron_coordinates, BMU_spectrum_id}),
-        {noreply, [
+handle_call(
+    {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, _From, [Neurons, Neuron_worker_state]) ->
+        %~ io:format("Setting BMU: ~w~n", [{coordinates, BMU_neuron_coordinates, spectrum_id, BMU_spectrum_id}]),
+        {reply, ok, [
             lists:map(fun(Neuron) ->
                     case Neuron#neuron.neuron_coordinates of
                         BMU_neuron_coordinates -> Neuron#neuron{bmu_to_spectrum_id = term_to_binary(BMU_spectrum_id) };
@@ -265,6 +266,9 @@ handle_cast(
 %~ .
 
 
+
+handle_info(Message, State) ->
+    io:format("Unexpected message: ~w~n",[{Message, State}]).
 
 %% BMU-Update related functions
 alpha(T, T_max, Alpha_begin, Alpha_end) ->
