@@ -6,7 +6,6 @@
 -export([handle_cast/2, handle_call/3]).
 -export([init/1]).
 -export([next_learning_step/0, compare_complete/0, update_complete/0]).
--export([set_neurons_worker_list/2]).
 
 -record(learning_step_manager_state, {
     neurons_worker_list = []
@@ -36,8 +35,8 @@ terminate(_Reason, _Neuron_state) ->
     ok
     .
 
-init(State) ->
-    {ok, State}.
+init(_State) ->
+    {ok, #learning_step_manager_state{}}.
 
 % Takes List like [{neuron_event_handler,{neuron,<0.91.0>}}, {neuron_event_handler,{neuron,<0.91.0>}},...]
 % as input and outputs a list conainting neurons worker pids
@@ -52,9 +51,6 @@ filter_neurons_worker_list(Neurons_worker_list, Filtered_list) ->
             filter_neurons_worker_list(Tail, [Pid|Filtered_list]);
         _Other -> filter_neurons_worker_list(Tail, Filtered_list)
     end.
-
-set_neurons_worker_list(Server_name, Neurons_worker_list) ->
-    gen_server:call(Server_name, {set_neurons_worker_list, Neurons_worker_list}).
 
 next_learning_step() ->
     gen_server:cast(?MODULE, next_learning_step).
@@ -73,12 +69,15 @@ handle_cast(next_learning_step, State) ->
     ok = spectrum_dispatcher:next_learning_step(),
     %ok = neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu(bmu_manager)}), 
     {noreply, State};
+    
+% called when all neuron workers have compared a spectrum to all the neurons
+% gets the workers registered at the neuron_event_handler for learning_step_manager_state
+% then initiates the update of the neurons
 handle_cast(compare_complete, State) ->
+    Neurons_worker_list = gen_event:which_handlers(neuron_event_manager),
+    New_state = State#learning_step_manager_state{neurons_worker_list = filter_neurons_worker_list(Neurons_worker_list)},
     ok = neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu(bmu_manager)}),
-    {noreply, State}.
-
-handle_call({set_neurons_worker_list, Neurons_worker_list}, _From, State) ->
-    {reply, ok, State#learning_step_manager_state{neurons_worker_list = filter_neurons_worker_list(Neurons_worker_list)}};
+    {noreply, New_state}.
     
 handle_call(update_complete, From, State) ->
     {From_pid, _From_tag} = From,
