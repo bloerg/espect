@@ -203,8 +203,13 @@ handle_call(reset_speclist_index, _From, Spectrum_dispatcher_state) ->
         }
     };
 
-%does nothing at the moment
+
 handle_call(next_learning_step, _From, Spectrum_dispatcher_state) ->
-    {reply, ok, Spectrum_dispatcher_state}.
+    {reply, 
+    case length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) of 
+        0 -> nospectraleft;
+        _Other -> ok
+    end,
+    Spectrum_dispatcher_state}.
 
 
