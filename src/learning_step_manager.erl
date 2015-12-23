@@ -3,9 +3,10 @@
 
 -export([start/0, start_link/0, start/1, start_link/1]).
 -export([stop/0, stop/1, terminate/2]).
--export([handle_cast/2, handle_call/3]).
+-export([handle_cast/2]).
+%~ -export([handle_call/3]).
 -export([init/1]).
--export([next_learning_step/0, compare_complete/0, update_complete/0]).
+-export([next_learning_step/0, compare_complete/3, update_complete/1]).
 
 -record(learning_step_manager_state, {
     neurons_worker_list = []
@@ -52,46 +53,75 @@ filter_neurons_worker_list(Neurons_worker_list, Filtered_list) ->
         _Other -> filter_neurons_worker_list(Tail, Filtered_list)
     end.
 
+remove_pid_from_list([], _Pid) ->
+    [];
+remove_pid_from_list(Pid_list, Pid) ->
+    remove_pid_from_list(Pid_list, [], Pid).
+    
+remove_pid_from_list([], Filtered_pid_list, _Pid) ->
+    Filtered_pid_list;
+remove_pid_from_list(Pid_list, Filtered_pid_list, Pid) ->
+    [Head|Tail] = Pid_list,
+    case Head of
+        Pid -> remove_pid_from_list(Tail, Filtered_pid_list, Pid);
+        _Other -> remove_pid_from_list(Tail, [Head|Filtered_pid_list], Pid)
+    end.
+
+
 next_learning_step() ->
     gen_server:cast(?MODULE, next_learning_step).
 
 % triggered by bmu_manager after all neurons have sent their compare results
 % and the bmu_manager has found a bmu
-compare_complete() ->
-    gen_server:cast(?MODULE, compare_complete).
+compare_complete(BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata) ->
+    gen_server:cast(?MODULE, {compare_complete, BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata}).
 
 % triggered by individual neuron workers when they have updated their share of neurons
-update_complete() ->
-    gen_server:call(?MODULE, update_complete).
+update_complete(From) ->
+    gen_server:cast(?MODULE, {update_complete, From}).
 
 handle_cast(next_learning_step, State) ->
     %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu(bmu_manager)}),
-    ok = spectrum_dispatcher:next_learning_step(),
-    %ok = neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu(bmu_manager)}), 
+
+    case spectrum_dispatcher:next_learning_step() == nospectraleft of
+        true -> iteration_state_server:next_iteration();
+        false -> 
+            ok = bmu_manager:next_learning_step(),
+            ok = neuron_event_handler:trigger_neuron_compare(
+                {compare, spectrum_dispatcher:get_spectrum_with_id(spectrum_dispatcher)}
+            )
+    end,
     {noreply, State};
     
 % called when all neuron workers have compared a spectrum to all the neurons
+% sets the bmu in the neurons worker containing the BMU-neuron
 % gets the workers registered at the neuron_event_handler for learning_step_manager_state
 % then initiates the update of the neurons
-handle_cast(compare_complete, State) ->
+handle_cast({compare_complete, BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata}, State) ->
+    %~ io:format("called handle_cast ~w~n", [{compare_complete, BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata}]),
+    ok = neurons:set_bmu(
+        BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata
+    ),
     Neurons_worker_list = gen_event:which_handlers(neuron_event_manager),
     New_state = State#learning_step_manager_state{neurons_worker_list = filter_neurons_worker_list(Neurons_worker_list)},
     ok = neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu(bmu_manager)}),
-    {noreply, New_state}.
+    {noreply, New_state};
     
-handle_call(update_complete, From, State) ->
-    {From_pid, _From_tag} = From,
+handle_cast({update_complete, From_pid}, State) ->
     % remove the pid of the sending neurons worker from the list of
     % registered workers. This is to keep track of the responses of the neuron workers
-    Neurons_worker_list_new = lists:takewhile(
-        fun(Pid) -> Pid =/= From_pid end, 
-        State#learning_step_manager_state.neurons_worker_list
+    
+    Neurons_worker_list_new = remove_pid_from_list(
+        State#learning_step_manager_state.neurons_worker_list,
+        From_pid
     ),
+    
     case length(Neurons_worker_list_new) of
         0 ->
-            ok = spectrum_dispatcher:next_learning_step();
-        Other_number -> 
-            erlang:display({"updated another neurons", Other_number}),
+            spectrum_dispatcher:next_learning_step(),
+            ok = bmu_manager:next_learning_step(),
+            ok = next_learning_step();
+        _Other_number -> 
             ok
     end,
-    {reply, ok, State#learning_step_manager_state{ neurons_worker_list = Neurons_worker_list_new}}.
+    {noreply, State#learning_step_manager_state{ neurons_worker_list = Neurons_worker_list_new}}.
