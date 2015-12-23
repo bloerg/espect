@@ -83,9 +83,9 @@ update_complete(From) ->
 handle_cast(next_learning_step, State) ->
     %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu(bmu_manager)}),
 
-    case spectrum_dispatcher:next_learning_step() == nospectraleft of
-        true -> iteration_state_server:next_iteration();
-        false -> 
+    case spectrum_dispatcher:next_learning_step() of
+        nospectraleft -> iteration_state_server:next_iteration();
+        ok -> 
             ok = bmu_manager:next_learning_step(),
             ok = neuron_event_handler:trigger_neuron_compare(
                 {compare, spectrum_dispatcher:get_spectrum_with_id(spectrum_dispatcher)}
