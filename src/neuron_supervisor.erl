@@ -93,7 +93,7 @@ init([Number_of_workers_per_supervisor,
     [X_max, Y_max] = spectrum_dispatcher:get_minimum_som_dimensions(spectrum_dispatcher),
     
     %Start neuron event manager
-    neuron_event_handler:start_link({local, neuron_event_manager}),
+    neuron_event_handler:start_link({global, neuron_event_manager}),
     
     %Start BMU manager
     bmu_manager:start_link({local, bmu_manager}, Iteration, Max_iteration),
