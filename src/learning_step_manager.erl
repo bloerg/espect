@@ -9,7 +9,8 @@
 -export([next_learning_step/0, compare_complete/3, update_complete/1]).
 
 -record(learning_step_manager_state, {
-    neurons_worker_list = []
+    neurons_worker_list = [],
+    learning_step = 1
 }).
 
 %%Start an iteration state server
@@ -28,9 +29,9 @@ start_link() ->
 
 
 stop() ->
-    gen_server:cast(?MODULE, stop).
+    gen_server:cast({global, ?MODULE}, stop).
 stop(Server_name) ->
-    gen_server:cast(Server_name, stop).
+    gen_server:cast({global, ?MODULE}, stop).
 
 terminate(_Reason, _Neuron_state) ->
     ok
@@ -69,20 +70,20 @@ remove_pid_from_list(Pid_list, Filtered_pid_list, Pid) ->
 
 
 next_learning_step() ->
-    gen_server:cast(?MODULE, next_learning_step).
+    gen_server:cast({global, ?MODULE}, next_learning_step).
 
 % triggered by bmu_manager after all neurons have sent their compare results
 % and the bmu_manager has found a bmu
 compare_complete(BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata) ->
-    gen_server:cast(?MODULE, {compare_complete, BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata}).
+    gen_server:cast({global, ?MODULE}, {compare_complete, BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata}).
 
 % triggered by individual neuron workers when they have updated their share of neurons
 update_complete(From) ->
-    gen_server:cast(?MODULE, {update_complete, From}).
+    gen_server:cast({global, ?MODULE}, {update_complete, From}).
 
 handle_cast(next_learning_step, State) ->
     %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu(bmu_manager)}),
-
+    io:format("Starting learning step ~w~n", [State#learning_step_manager_state.learning_step +1]),
     case spectrum_dispatcher:next_learning_step() of
         nospectraleft -> iteration_state_server:next_iteration();
         ok -> 
@@ -91,7 +92,7 @@ handle_cast(next_learning_step, State) ->
                 {compare, spectrum_dispatcher:get_spectrum_with_id(spectrum_dispatcher)}
             )
     end,
-    {noreply, State};
+    {noreply, State#learning_step_manager_state{learning_step = State#learning_step_manager_state.learning_step + 1}};
     
 % called when all neuron workers have compared a spectrum to all the neurons
 % sets the bmu in the neurons worker containing the BMU-neuron
