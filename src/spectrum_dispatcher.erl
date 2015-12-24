@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1, get_spectrum_with_id/1, get_spectrum_for_neuron_initialization/1]).
+-export([get_spectrum/1, get_spectrum_with_id/1, get_spectrum_for_neuron_initialization/1, get_spectrum_path_for_neuron_initialization/1]).
 -export([set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
 -export([reset_speclist_index/0, next_learning_step/0]).
 %-export([update_iteration/1)].
@@ -76,6 +76,9 @@ get_spectrum(Server_name) ->
 
 get_spectrum_for_neuron_initialization(Server_name) ->
     gen_server:call(Server_name, get_spectrum_for_neuron_initialization).
+
+get_spectrum_path_for_neuron_initialization(Server_name) ->
+    gen_server:call(Server_name, get_spectrum_path_for_neuron_initialization).
 
 get_spectrum_with_id(Server_name) ->
     gen_server:call(Server_name, get_spectrum_with_id).
@@ -168,6 +171,31 @@ handle_call(
                 spectra_source = {filesystem, Directory, File_format, Spec_list_index +1}
             }
         };
+
+% returns a path of a spectrum for spectrum initialisation
+handle_call(
+    get_spectrum_path_for_neuron_initialization, _From, Spectrum_dispatcher_state) ->
+    {filesystem, Directory, File_format, Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source,
+    
+    %[{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
+        case Spec_list_index > length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) of 
+            false ->
+                Reply = {forward,
+                    string:concat(Directory, lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused))
+                };
+            %% if all spectra are dispatched but neurons keep asking,
+            %% return random spectra paths from the list of same spectra
+            true ->
+                Reply = {reverse,
+                    string:concat(Directory, lists:nth(random:uniform(length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused))
+                }
+        end,
+        {reply, Reply, 
+            Spectrum_dispatcher_state#spectrum_dispatcher_state{
+                spectra_source = {filesystem, Directory, File_format, Spec_list_index +1}
+            }
+        };
+
 
 handle_call(
     get_minimum_som_dimensions, _From, Spectrum_dispatcher_state) ->
