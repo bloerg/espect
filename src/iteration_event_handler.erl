@@ -36,7 +36,7 @@ terminate(_Reason, _State) ->
 
 
 trigger_iteration_update() ->
-    gen_event:sync_notify(iteration_event_manager, {from_spectrum_dispatcher, no_spectra_left}).
+    gen_event:sync_notify({global, iteration_event_manager}, {from_spectrum_dispatcher, no_spectra_left}).
 
 
 

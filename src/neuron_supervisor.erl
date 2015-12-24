@@ -86,7 +86,7 @@ init([Number_of_workers_per_supervisor,
     learning_step_manager:start({global, learning_step_manager}),
 
     %start iteration event manager
-    iteration_event_handler:start_link({local, iteration_event_manager}),
+    iteration_event_handler:start_link({global, iteration_event_manager}),
     
     %start spectrum dispatcher and determine SOM size from number of spectra files
     spectrum_dispatcher:start_link({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/", binary, 1}, Iteration, Max_iteration),
