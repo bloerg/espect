@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([handle_info/2]).
--export([init/1]).
+-export([init/1, load_spectra_to_neurons_worker/1]).
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
@@ -97,15 +97,48 @@ init(State) ->
     [X_max, _Y_max] = State#neuron_worker_state.som_dimensions,
     
     {ok, [
-            [ #neuron {
+            [ 
+            %~ #neuron {
                     %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
-                    neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(State#neuron_worker_state.spectrum_dispatcher),
-                    neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
-                } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
+                    
+                    %~ %% get Spectrum from spectrum_dispatcher
+                    %~ neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(State#neuron_worker_state.spectrum_dispatcher),
+                    
+                    %~ %% get Spectrum path form spectrum_dispatcher and load spectrum from filesystem
+                    %~ neuron_vector = load_spectrum_from_filesystem(
+                        %~ spectrum_dispatcher:get_spectrum_path_for_neuron_initialization(State#neuron_worker_state.spectrum_dispatcher)
+                    %~ ),
+                    %~ neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
+                %~ } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
             ],
             State
         ]
     }.
+
+
+load_spectrum_from_filesystem({Direction, Path}) ->
+    case Direction of 
+        forward ->
+            [_Spectrum_id, Spectrum] = spectrum_handling:read_spectrum_from(
+                filesystem, 
+                Path,
+                binary
+            );
+        %% if all spectra are dispatched but neurons keep asking,
+        %% return random spectras from the list of same spectra, but reversed
+        reverse ->
+            [_Spectrum_id, Temp_spectrum] = spectrum_handling:read_spectrum_from(
+                filesystem, 
+                Path,
+                binary
+            ),
+            Spectrum = lists:reverse(Temp_spectrum)
+    end,
+    Spectrum.
+
+%% @doc init neuron_workers with spectra
+load_spectra_to_neurons_worker(Server_name) ->
+    gen_server:cast(Server_name, load_spectra_to_neurons_worker).
 
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
 get_neuron_spectrum_distance(Server_name, Spectrum_with_id) ->
@@ -195,7 +228,29 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
         Neurons
         ),
     learning_step_manager:update_complete(self()),
-    {noreply, [NewNeurons, Neuron_worker_state]}.
+    {noreply, [NewNeurons, Neuron_worker_state]};
+
+handle_cast(load_spectra_to_neurons_worker, [_Neurons, Neuron_worker_state]) ->
+    [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
+    [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
+    {noreply, [
+            [ 
+            #neuron {
+                    %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
+                    
+                    %~ %% get Spectrum from spectrum_dispatcher
+                    neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
+                    
+                    %% get Spectrum path form spectrum_dispatcher and load spectrum from filesystem
+                    %~ neuron_vector = load_spectrum_from_filesystem(
+                        %~ spectrum_dispatcher:get_spectrum_path_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher)
+                    %~ ),
+                    neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
+                } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
+            ],
+            Neuron_worker_state
+        ]
+    }.
 
 handle_call(
     {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, _From, [Neurons, Neuron_worker_state]) ->
@@ -211,6 +266,8 @@ handle_call(
             ), 
             Neuron_worker_state
         ]}.
+
+
 
 %~ handle_cast({update_neuron, BMU_spectrum, BMU_coordinates}, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
     %~ {noreply, [Neuron_coordinates, 
