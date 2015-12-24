@@ -46,5 +46,6 @@ handle_call(get_iteration, _From, [Iteration, Max_iteration]) ->
 
 handle_call(next_iteration, _From, [Iteration, Max_iteration]) ->
     io:format("Doing nothing but increasing a variable ~w~n", [{Iteration, Iteration+1}]),
+    io:format("...also, taking the time ~w~n", [os:timestamp()]),
     {reply, Iteration + 1, [Iteration + 1, Max_iteration]}.
 
