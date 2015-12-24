@@ -90,8 +90,8 @@ terminate(_Reason, _Neuron_state) ->
 
 
 init(State) ->
-    gen_event:add_handler(neuron_event_manager, {neuron_event_handler, {neuron, self()}}, [{pid, self()}]),
-    gen_event:add_handler(iteration_event_manager, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
+    gen_event:add_handler({global, neuron_event_manager}, {neuron_event_handler, {neuron, self()}}, [{pid, self()}]),
+    gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
 
     [First_neuron, Last_neuron] = State#neuron_worker_state.neuron_coordinate_range,
     [X_max, _Y_max] = State#neuron_worker_state.som_dimensions,
