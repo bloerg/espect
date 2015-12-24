@@ -31,7 +31,7 @@ start_link() ->
 stop() ->
     gen_server:cast({global, ?MODULE}, stop).
 stop(Server_name) ->
-    gen_server:cast({global, ?MODULE}, stop).
+    gen_server:cast(Server_name, stop).
 
 terminate(_Reason, _Neuron_state) ->
     ok
@@ -82,7 +82,7 @@ update_complete(From) ->
     gen_server:cast({global, ?MODULE}, {update_complete, From}).
 
 handle_cast(next_learning_step, State) ->
-    %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu(bmu_manager)}),
+    %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu({global, bmu_manager})}),
     io:format("Starting learning step ~w~n", [State#learning_step_manager_state.learning_step +1]),
     case spectrum_dispatcher:next_learning_step() of
         nospectraleft -> iteration_state_server:next_iteration();
@@ -103,9 +103,9 @@ handle_cast({compare_complete, BMU_neurons_worker_pid, BMU_coordinates, BMU_spec
     ok = neurons:set_bmu(
         BMU_neurons_worker_pid, BMU_coordinates, BMU_spectrum_metadata
     ),
-    Neurons_worker_list = gen_event:which_handlers(neuron_event_manager),
+    Neurons_worker_list = gen_event:which_handlers({global, neuron_event_manager}),
     New_state = State#learning_step_manager_state{neurons_worker_list = filter_neurons_worker_list(Neurons_worker_list)},
-    ok = neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu(bmu_manager)}),
+    ok = neuron_event_handler:trigger_neuron_update({update, bmu_manager:get_bmu({global, bmu_manager})}),
     {noreply, New_state};
     
 handle_cast({update_complete, From_pid}, State) ->

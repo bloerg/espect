@@ -63,7 +63,7 @@ start_link(Iteration, Max_iteration) ->
 
 
 stop() ->
-    gen_server:cast(?MODULE, stop).
+    gen_server:cast({global, ?MODULE}, stop).
 stop(Server_name) ->
     gen_server:cast(Server_name, stop).
 
@@ -73,7 +73,7 @@ terminate(_Reason, _Neuron_state) ->
 
 
 init(State) ->
-    gen_event:add_handler(iteration_event_manager, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
+    gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
     {ok, State}.
 
 
@@ -107,7 +107,7 @@ remove_pid_from_list(Pid_list, Filtered_pid_list, Pid) ->
     end.
 
 
-neuron_spectrum_distance(Result_receiver_name, Data
+neuron_spectrum_distance(BMU_manager, Data
     %~ % i. e.
     %~ [Neuron_coordinates, 
          %~ Spectrum_id, 
@@ -115,23 +115,23 @@ neuron_spectrum_distance(Result_receiver_name, Data
          %~ Neuron_worker_pid
     %~ ]
     ) ->
-        gen_server:call(Result_receiver_name, {intermediate, Data}).
+        gen_server:call(BMU_manager, {intermediate, Data}).
 
-get_bmu(Result_receiver_name) ->
-    gen_server:call(Result_receiver_name, get_bmu).
+get_bmu(Server_name) ->
+    gen_server:call(Server_name, get_bmu).
     
 
-get_state(Result_receiver_name) ->
-    gen_server:call(Result_receiver_name, get_state).
+get_state(BMU_manager) ->
+    gen_server:call(BMU_manager, get_state).
 
-set_iteration(Server_name, New_iteration) ->
-    gen_server:cast(Server_name, {set_iteration, New_iteration}).
+set_iteration(BMU_manager, New_iteration) ->
+    gen_server:cast(BMU_manager, {set_iteration, New_iteration}).
 
-set_neurons_worker_list(Server_name, Neurons_worker_list) ->
-    gen_server:call(Server_name, {set_neurons_worker_list, Neurons_worker_list}).
+set_neurons_worker_list(BMU_manager, Neurons_worker_list) ->
+    gen_server:call(BMU_manager, {set_neurons_worker_list, Neurons_worker_list}).
 
 next_learning_step() ->
-    gen_server:call(?MODULE, next_learning_step).
+    gen_server:call({global, ?MODULE}, next_learning_step).
 
     
 handle_call(next_learning_step, _From, BMU_manager_state) ->

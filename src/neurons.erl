@@ -145,8 +145,8 @@ get_neuron_spectrum_distance(Server_name, Spectrum_with_id) ->
     gen_server:call(Server_name, {compare, Spectrum_with_id}).
     
 %% @doc async vector distance computing
-get_neuron_spectrum_distance({async, Result_receiver_name}, Server_name, Spectrum_with_id) ->
-    gen_server:cast(Server_name, {{async, Result_receiver_name}, {compare, Spectrum_with_id}}).
+get_neuron_spectrum_distance({async, BMU_manager}, Server_name, Spectrum_with_id) ->
+    gen_server:cast(Server_name, {{async, BMU_manager}, {compare, Spectrum_with_id}}).
 
 set_bmu(Neurons_worker_name, Neuron_coordinates, Spectrum_id) ->
     gen_server:call(Neurons_worker_name, {set_bmu, Neuron_coordinates, Spectrum_id}).
@@ -162,7 +162,7 @@ set_iteration(Server_name, New_iteration) ->
     gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
 handle_cast(
-    {{async, Result_receiver_name}, {compare, Spectrum_with_id}}, 
+    {{async, BMU_manager}, {compare, Spectrum_with_id}}, 
     [Neurons, Neuron_worker_state]) ->
         %~ erlang:display({"comparing spectrum: ", Spectrum_with_id}),
         [Spectrum_metadata, Spectrum] = Spectrum_with_id,
@@ -192,7 +192,7 @@ handle_cast(
                  %~ Spectrum_metadata, 
                  %~ Min_spectrum_neuron_distance
             %~ ]}), 
-        bmu_manager:neuron_spectrum_distance(Result_receiver_name,
+        bmu_manager:neuron_spectrum_distance(BMU_manager,
             [Min_spectrum_neuron_distance_coordinates, 
                  Spectrum_metadata, 
                  Min_spectrum_neuron_distance
