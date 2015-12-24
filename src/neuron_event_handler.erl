@@ -4,7 +4,11 @@
 -export([handle_event/2, handle_call/2, handle_info/2]).
 -export([code_change/3]).
 -export([stop/1, terminate/2]).
--export([trigger_neuron_compare/1, trigger_neuron_update/1]).
+-export([
+    trigger_neuron_compare/1, 
+    trigger_neuron_update/1,
+    trigger_load_spectra_to_neurons_workers/0
+]).
 
 
 start_link(Event_manager_name) ->
@@ -17,6 +21,11 @@ stop(Event_manager_name) ->
 
 init([{pid, Pid}]) ->
     {ok, [{pid, Pid}]}.
+
+handle_event(load_spectra_to_neurons_workers, [{pid, Pid}]) ->
+    neurons:load_spectra_to_neurons_worker(Pid),
+    {ok, [{pid, Pid}]};
+
 
 handle_event({compare, Spectrum_with_id}, [{pid, Pid}]) ->
     neurons:get_neuron_spectrum_distance(Pid, Spectrum_with_id),
@@ -43,6 +52,8 @@ code_change(_OldVsn, State, _Extra) ->
 terminate(_Reason, _State) ->
     ok.
 
+trigger_load_spectra_to_neurons_workers() ->
+    gen_event:sync_notify(neuron_event_manager, load_spectra_to_neurons_workers).
 
 trigger_neuron_compare({compare, Spectrum_with_id}) ->
     %gen_event:sync_notify(neuron_event_manager, {compare, Spectrum, Spectrum_metadata}).
