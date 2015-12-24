@@ -80,7 +80,7 @@ init([Number_of_workers_per_supervisor,
     ]) ->
     
     %start iteration state server
-    iteration_state_server:start({local, iteration_state_server}, Iteration, Max_iteration),
+    iteration_state_server:start({global, iteration_state_server}, Iteration, Max_iteration),
     
     %start learning step manager
     learning_step_manager:start({global, learning_step_manager}),

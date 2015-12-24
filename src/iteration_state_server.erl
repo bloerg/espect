@@ -5,7 +5,7 @@
 -export([stop/0, stop/1, terminate/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_iteration/1, next_iteration/0]).
+-export([get_iteration/0, next_iteration/0]).
 
 
 %%Start an iteration state server
@@ -35,11 +35,11 @@ terminate(_Reason, _Neuron_state) ->
 init(State) ->
     {ok, State}.
 
-get_iteration(Server_name) ->
-    gen_server:call(Server_name, get_iteration).
+get_iteration() ->
+    gen_server:call({global, ?MODULE}, get_iteration).
 
 next_iteration() ->
-    gen_server:call(?MODULE, next_iteration).
+    gen_server:call({global, ?MODULE}, next_iteration).
 
 handle_call(get_iteration, _From, [Iteration, Max_iteration]) ->
     {reply, Iteration, [Iteration, Max_iteration]};
