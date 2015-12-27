@@ -49,6 +49,7 @@ terminate(_Reason, _Spectrum_dispatcher_state) ->
 
 init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteration])
     when Start_index > 0 ->
+    gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
     {ok,
         #spectrum_dispatcher_state{
             spectra_source = { 
@@ -62,6 +63,7 @@ init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteratio
             max_iteration = Max_iteration
         }
     }.
+
 
 get_minimum_som_dimensions_helper(Number_of_spectra) ->
     get_minimum_som_dimensions_helper(1, Number_of_spectra).
@@ -213,6 +215,7 @@ handle_call(
         length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_used), 
         Spectrum_dispatcher_state
         };
+
 handle_call({set_iteration, New_iteration}, _From, Spectrum_dispatcher_state) ->
     {filesystem, Directory, File_format, _Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source, 
     {reply, ok, 
