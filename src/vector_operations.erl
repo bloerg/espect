@@ -1,6 +1,7 @@
 -module(vector_operations).
 -export([vector_distance_squared/3, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2]).
 -export([vector_generate/2]).
+-export([vector_length_squared/1]).
 
 
 %% @author Jörg Brünecke <dev@bloerg.de>
@@ -65,6 +66,14 @@ vector_sum(Vector1, Vector2) when is_list(Vector1), is_list(Vector2) ->
 
 scalar_multiplication(Scalar, Vector) when is_float(Scalar) or is_integer(Scalar), is_list(Vector) ->
     lists:map(fun(Element) -> Element*Scalar end, Vector).
+
+%this is fast
+vector_length_squared(Vector) ->
+    vector_length_squared(Vector, 0).
+vector_length_squared([First| Rest], Sum_squared) ->
+    vector_length_squared(Rest, Sum_squared + First*First);
+vector_length_squared([], Sum_squared) ->
+    Sum_squared.
 
 %this is fast
 vector_length(Vector) ->
