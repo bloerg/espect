@@ -260,7 +260,10 @@ handle_cast(load_spectra_to_neurons_worker, [_Neurons, Neuron_worker_state]) ->
             ],
             Neuron_worker_state
         ]
-    }.
+    };
+
+handle_cast(stop, Neuron_state) ->
+    {stop, normal, Neuron_state}.
 
 handle_call({add_neuron, List_of_neurons}, _From, [Neurons, Neuron_worker_state]) ->
     {reply, ok, [Neurons ++ List_of_neurons, Neuron_worker_state]};
@@ -289,22 +292,6 @@ handle_call(
 
 %~ handle_cast({set_iteration, New_iteration}, [Neuron_coordinates, Neuron_vector, BMU, _Old_iteration, Max_iteration]) ->
     %~ {noreply, [Neuron_coordinates, Neuron_vector, BMU, New_iteration, Max_iteration]};
-
-%~ handle_cast(stop, Neuron_state) ->
-    %~ {stop, normal, Neuron_state}.
-
-%~ handle_call(
-    %~ {compare, Spectrum, Spectrum_metadata}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
-        %~ Reply = [Neuron_coordinates, 
-                 %~ Spectrum_metadata, 
-                 %~ vector_operations:vector_distance(Neuron_vector, Spectrum)
-                %~ ],
-        %~ {reply, Reply, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]}
-    %~ ;
-%~ handle_call(
-    %~ {set_bmu, New_BMU}, _From, [Neuron_coordinates, Neuron_vector, _Old_BMU, Iteration, Max_iteration]) ->
-        %~ {reply, ok, [Neuron_coordinates, Neuron_vector, New_BMU, Iteration, Max_iteration]}
-    %~ ;
 
 %~ handle_call(
     %~ {update_neuron, BMU_spectrum, BMU_coordinates}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
