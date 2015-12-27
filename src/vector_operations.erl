@@ -70,18 +70,14 @@ scalar_multiplication(Scalar, Vector) when is_float(Scalar) or is_integer(Scalar
 %this is fast
 vector_length_squared(Vector) ->
     vector_length_squared(Vector, 0).
-vector_length_squared([First| Rest], Sum_squared) ->
-    vector_length_squared(Rest, Sum_squared + First*First);
+vector_length_squared([Head| Tail], Sum_squared) ->
+    vector_length_squared(Tail, Sum_squared + Head*Head);
 vector_length_squared([], Sum_squared) ->
     Sum_squared.
 
-%this is fast
+
 vector_length(Vector) ->
-    vector_length(Vector, 0).
-vector_length([First| Rest], Sum_squared) ->
-    vector_length(Rest, Sum_squared + First*First);
-vector_length([], Sum_squared) ->
-    math:sqrt(Sum_squared).
+    math:sqrt(vector_length_squared(Vector)).
 
 %this is slow
 vector_length2(Vector) ->
