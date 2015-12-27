@@ -11,16 +11,16 @@
 %%Start an iteration state server
 
 start(Server_name, Iteration, Max_iteration) ->
-    gen_server:start(Server_name, ?MODULE, [Iteration, Max_iteration], []). 
+    gen_server:start(Server_name, ?MODULE, [Iteration, Max_iteration, os:timestamp()], []). 
 
 start_link(Server_name, Iteration, Max_iteration) ->
-    gen_server:start_link(Server_name, ?MODULE, [Iteration, Max_iteration], []).
+    gen_server:start_link(Server_name, ?MODULE, [Iteration, Max_iteration, os:timestamp()], []).
 
 start(Iteration, Max_iteration) ->
-    gen_server:start(?MODULE, [Iteration, Max_iteration], []).
+    gen_server:start(?MODULE, [Iteration, Max_iteration, os:timestamp()], []).
 
 start_link(Iteration, Max_iteration) ->
-    gen_server:start_link(?MODULE, [Iteration, Max_iteration], []).
+    gen_server:start_link(?MODULE, [Iteration, Max_iteration, os:timestamp()], []).
 
 
 stop() ->
@@ -41,11 +41,12 @@ get_iteration() ->
 next_iteration() ->
     gen_server:call({global, ?MODULE}, next_iteration).
 
-handle_call(get_iteration, _From, [Iteration, Max_iteration]) ->
-    {reply, Iteration, [Iteration, Max_iteration]};
+handle_call(get_iteration, _From, [Iteration, Max_iteration, Learning_step_begin_timestamp]) ->
+    {reply, Iteration, [Iteration, Max_iteration, Learning_step_begin_timestamp]};
 
-handle_call(next_iteration, _From, [Iteration, Max_iteration]) ->
-    io:format("Doing nothing but increasing a variable ~w~n", [{Iteration, Iteration+1}]),
-    io:format("...also, taking the time ~w~n", [os:timestamp()]),
+handle_call(next_iteration, _From, [Iteration, Max_iteration, Learning_step_begin_timestamp]) ->
+    io:format("Increasing Iteration ~w~n", [{Iteration, "->", Iteration+1}]),
+    io:format("Last iteration step was running for ~w seconds.~n", [timer:now_diff(os:timestamp(), Learning_step_begin_timestamp) * 1000000]),
+    iteration_event_handler:trigger_iteration_update(Iteration + 1),
     {reply, Iteration + 1, [Iteration + 1, Max_iteration]}.
 
