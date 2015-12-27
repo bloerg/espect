@@ -291,33 +291,6 @@ handle_call({set_iteration, New_iteration}, _From, [Neurons, Neuron_worker_state
     {reply, ok, [Neurons, Neuron_worker_state#neuron_worker_state{iteration = New_iteration}]}.
 
 
-
-
-
-
-%~ handle_call(
-    %~ {update_neuron, BMU_spectrum, BMU_coordinates}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
-        %~ %% The if is for benchmark. Iteration should not go back to 0, actually
-        %~ if
-            %~ Iteration < Max_iteration -> Iteration2 = Iteration + 1;
-            %~ Iteration == Max_iteration -> Iteration2 = 0
-        %~ end,
-        %~ {reply, ok, [Neuron_coordinates, 
-                 %~ vector_operations:vector_sum(Neuron_vector,
-                    %~ vector_operations:scalar_multiplication(
-                        %~ neighbourhood_function1(Iteration, Max_iteration, Neuron_coordinates, BMU_coordinates),
-                        %~ vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
-                    %~ )
-                 %~ ),
-                 %~ BMU,
-                 %~ Iteration2,                
-                 %~ Max_iteration
-                %~ ]
-        %~ }
-%~ .
-
-
-
 handle_info(Message, State) ->
     io:format("Unexpected message: ~w~n",[{Message, State}]).
 
