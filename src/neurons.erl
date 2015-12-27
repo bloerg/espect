@@ -7,6 +7,7 @@
 -export([handle_call/3]).
 -export([handle_info/2]).
 -export([init/1, load_spectra_to_neurons_worker/1]).
+-export([add_spectra/2, remove_spectra/2]).
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
@@ -23,7 +24,7 @@
 
 -record(neuron_worker_state, {
     spectrum_dispatcher = spectrum_dispatcher,  %Name of the spectrum dispatcher server
-    neuron_coordinate_range = [], %interval of the sequence of neuron coordinates, element of [0 ... Max_x * Max_y]
+    neuron_coordinate_range = [], %interval of the sequence of neuron coordinates, element of [0 ... Max_x * Max_y]; this is for initalisation, it may be wrong after adding and remove spectra using add_spectra() and remove_spectra()
     som_dimensions = [], % maximum x and maximum y coordinate of the self organizing map
     iteration = 0, %iteration step
     max_iteration = 200 %maximum number of iterations
@@ -140,6 +141,15 @@ load_spectrum_from_filesystem({Direction, Path}) ->
 load_spectra_to_neurons_worker(Server_name) ->
     gen_server:cast(Server_name, load_spectra_to_neurons_worker).
 
+%% @doc add neurons to the neurons list
+%List_of_neurons must be list of #neuron record
+add_neurons(Server_name, List_of_neurons) ->
+    gen_server:call(Server_name, {add_neurons, List_of_neurons}).
+
+%% @doc deletes neurons from the neurons list and returns the deleted neurons
+remove_neurons(Server_name, Number) ->
+    gen_server:call(Server_name, {remove_neurons, Number}).
+
 %% @doc computes the vector distance between neuron and spectrum and sends the result to the caller
 get_neuron_spectrum_distance(Server_name, Spectrum_with_id) ->
     gen_server:call(Server_name, {compare, Spectrum_with_id}).
@@ -252,6 +262,13 @@ handle_cast(load_spectra_to_neurons_worker, [_Neurons, Neuron_worker_state]) ->
         ]
     }.
 
+handle_call({add_neuron, List_of_neurons}, _From, [Neurons, Neuron_worker_state]) ->
+    {reply, ok, [Neurons ++ List_of_neurons, Neuron_worker_state]};
+
+handle_call({remove_neuron, Number}, _From, [Neurons, Neuron_worker_state]) ->
+    {Reply, New_neurons} = lists:split(min(length(Neurons), Number), Neurons),
+    {reply, Reply, [New_neurons, Neuron_worker_state]};
+
 handle_call(
     {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, _From, [Neurons, Neuron_worker_state]) ->
         %~ io:format("Setting BMU: ~w~n", [{coordinates, BMU_neuron_coordinates, spectrum_id, BMU_spectrum_id}]),
@@ -269,19 +286,7 @@ handle_call(
 
 
 
-%~ handle_cast({update_neuron, BMU_spectrum, BMU_coordinates}, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
-    %~ {noreply, [Neuron_coordinates, 
-             %~ vector_operations:vector_sum(Neuron_vector,
-                %~ vector_operations:scalar_multiplication(
-                    %~ neighbourhood_function1(Iteration, Max_iteration, Neuron_coordinates, BMU_coordinates),
-                    %~ vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
-                %~ )
-             %~ ),
-             %~ BMU,
-             %~ Iteration,                
-             %~ Max_iteration
-            %~ ]
-    %~ };
+
 %~ handle_cast({set_iteration, New_iteration}, [Neuron_coordinates, Neuron_vector, BMU, _Old_iteration, Max_iteration]) ->
     %~ {noreply, [Neuron_coordinates, Neuron_vector, BMU, New_iteration, Max_iteration]};
 
