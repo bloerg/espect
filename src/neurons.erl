@@ -7,7 +7,7 @@
 -export([handle_call/3]).
 -export([handle_info/2]).
 -export([init/1, load_spectra_to_neurons_worker/1]).
--export([add_spectra/2, remove_spectra/2]).
+-export([add_neurons/2, remove_neurons/2]).
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
@@ -169,7 +169,7 @@ update_neuron(async, Server_name, BMU_neuron_coordinates) ->
     gen_server:cast(Server_name, {update_neuron, BMU_neuron_coordinates}).
 
 set_iteration(Server_name, New_iteration) ->
-    gen_server:cast(Server_name, {set_iteration, New_iteration}).
+    gen_server:call(Server_name, {set_iteration, New_iteration}).
 
 handle_cast(
     {{async, BMU_manager}, {compare, Spectrum_with_id}}, 
@@ -285,13 +285,15 @@ handle_call(
             Neurons
             ), 
             Neuron_worker_state
-        ]}.
+        ]};
+        
+handle_call({set_iteration, New_iteration}, _From, [Neurons, Neuron_worker_state]) ->
+    {reply, ok, [Neurons, Neuron_worker_state#neuron_worker_state{iteration = New_iteration}]}.
 
 
 
 
-%~ handle_cast({set_iteration, New_iteration}, [Neuron_coordinates, Neuron_vector, BMU, _Old_iteration, Max_iteration]) ->
-    %~ {noreply, [Neuron_coordinates, Neuron_vector, BMU, New_iteration, Max_iteration]};
+
 
 %~ handle_call(
     %~ {update_neuron, BMU_spectrum, BMU_coordinates}, _From, [Neuron_coordinates, Neuron_vector, BMU, Iteration, Max_iteration]) ->
