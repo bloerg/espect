@@ -4,13 +4,15 @@
 -export([start/0, start_link/0, start/1, start_link/1]).
 -export([stop/0, stop/1, terminate/2]).
 -export([handle_cast/2]).
-%~ -export([handle_call/3]).
+-export([set_iteration/2]).
 -export([init/1]).
 -export([next_learning_step/0, compare_complete/3, update_complete/1]).
 
 -record(learning_step_manager_state, {
     neurons_worker_list = [],
-    learning_step = 1
+    learning_step = 1,
+    iteration = 1,
+    max_iteration = 200
 }).
 
 %%Start an iteration state server
@@ -38,6 +40,7 @@ terminate(_Reason, _Neuron_state) ->
     .
 
 init(_State) ->
+    %~ gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
     {ok, #learning_step_manager_state{}}.
 
 % Takes List like [{neuron_event_handler,{neuron,<0.91.0>}}, {neuron_event_handler,{neuron,<0.91.0>}},...]
@@ -68,6 +71,9 @@ remove_pid_from_list(Pid_list, Filtered_pid_list, Pid) ->
         _Other -> remove_pid_from_list(Tail, [Head|Filtered_pid_list], Pid)
     end.
 
+
+set_iteration(Server_name, New_iteration) ->
+    gen_server:cast(Server_name, {set_iteration, New_iteration}).
 
 next_learning_step() ->
     gen_server:cast({global, ?MODULE}, next_learning_step).
@@ -125,4 +131,10 @@ handle_cast({update_complete, From_pid}, State) ->
         _Other_number -> 
             ok
     end,
-    {noreply, State#learning_step_manager_state{ neurons_worker_list = Neurons_worker_list_new}}.
+    {noreply, State#learning_step_manager_state{ neurons_worker_list = Neurons_worker_list_new}};
+    
+handle_cast({set_iteration, New_iteration}, State) ->
+    {noreply, State#learning_step_manager_state{
+        iteration = New_iteration,
+        learning_step = 1} 
+    }.
