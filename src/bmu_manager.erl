@@ -17,7 +17,8 @@
     shortest_distance = 576460752303423487, %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
     iteration = 0, %iteration step
     max_iteration = 200, %maximum number of iterations
-    neurons_worker_list = []
+    neurons_worker_list = [],
+    neuron_worker_pid_of_bmu = 0
 }).
 
 start(Server_name, Iteration, Max_iteration) ->
@@ -125,7 +126,8 @@ get_state(BMU_manager) ->
     gen_server:call(BMU_manager, get_state).
 
 set_iteration(BMU_manager, New_iteration) ->
-    gen_server:cast(BMU_manager, {set_iteration, New_iteration}).
+    %~ gen_server:cast(BMU_manager, {set_iteration, New_iteration}).
+    gen_server:call(BMU_manager, {set_iteration, New_iteration}).
 
 set_neurons_worker_list(BMU_manager, Neurons_worker_list) ->
     gen_server:call(BMU_manager, {set_neurons_worker_list, Neurons_worker_list}).
@@ -163,7 +165,8 @@ handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_dis
                         shortest_distance = Spectrum_neuron_distance,
                         bmu_coordinates = Neuron_coordinates,
                         bmu_spectrum_metadata = Spectrum_id,
-                        neurons_worker_list = Neurons_worker_list_new
+                        neurons_worker_list = Neurons_worker_list_new,
+                        neuron_worker_pid_of_bmu = From_pid
 
                     };
             false -> 
@@ -176,18 +179,22 @@ handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_dis
         case length(Neurons_worker_list_new) of
             0 ->
                 ok = learning_step_manager:compare_complete(
-                    From_pid, 
+                    New_bmu_manager_state#bmu_manager_state.neuron_worker_pid_of_bmu, 
                     New_bmu_manager_state#bmu_manager_state.bmu_coordinates,
                     New_bmu_manager_state#bmu_manager_state.bmu_spectrum_metadata
                 );
             _Other_number -> 
                 ok
         end,
-        
-        {reply, ok, New_bmu_manager_state}.
+        %~ io:format("BMU_manager input: ~w~n", [[Neuron_coordinates, Spectrum_id, Spectrum_neuron_distance]]),
+        %~ io:format("BMU_manager_state: ~w~n", [New_bmu_manager_state]),
+        {reply, ok, New_bmu_manager_state};
     
-handle_cast({set_iteration, New_iteration}, BMU_manager_state) ->
-    {noreply, BMU_manager_state#bmu_manager_state{iteration = New_iteration} };
+handle_call({set_iteration, New_iteration}, _From, _BMU_manager_state) ->
+    {reply, ok, #bmu_manager_state{
+            iteration = New_iteration
+        } 
+    }.
 
 handle_cast(stop, Neuron_state) ->
     {stop, normal, Neuron_state}.
