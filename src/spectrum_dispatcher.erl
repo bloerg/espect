@@ -8,6 +8,7 @@
 -export([init/1]).
 -export([get_spectrum/1, get_spectrum_with_id/1, get_spectrum_for_neuron_initialization/1, get_spectrum_path_for_neuron_initialization/1]).
 -export([set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
+-export([get_state/1]).
 -export([reset_speclist_index/0, next_learning_step/0]).
 %-export([update_iteration/1)].
 
@@ -91,6 +92,9 @@ get_minimum_som_dimensions(Server_name) ->
 get_number_of_spectra(Server_name) ->
     gen_server:call(Server_name, get_number_of_spectra).
 
+get_state(Server_name) ->
+    gen_server:call(Server_name, get_state).
+
 set_iteration(Server_name, New_iteration) ->
     gen_server:call(Server_name, {set_iteration, New_iteration}).
     
@@ -113,12 +117,14 @@ handle_call(
                     string:concat(Directory, hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), 
                     File_format
         ),
-        %% FIXME when List is empty tell iteration manager
         {   reply, 
             Reply, 
             Spectrum_dispatcher_state#spectrum_dispatcher_state{
                 spectra_list_unused = tl(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                spectra_list_used = hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)
+                spectra_list_used = [
+                    hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) |
+                    Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_used
+                ]
             }
         
         };
@@ -241,6 +247,10 @@ handle_call(next_learning_step, _From, Spectrum_dispatcher_state) ->
         0 -> nospectraleft;
         _Other -> ok
     end,
-    Spectrum_dispatcher_state}.
+    Spectrum_dispatcher_state};
+    
+handle_call(get_state, _From, State) ->
+    {reply, State, State}.
+
 
 
