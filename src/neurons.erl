@@ -11,6 +11,7 @@
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
+-export([map_dump/1]).
 
 %for testing, remove later
 -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
@@ -172,6 +173,9 @@ update_neuron(async, Server_name, BMU_neuron_coordinates) ->
 set_iteration(Server_name, New_iteration) ->
     gen_server:call(Server_name, {set_iteration, New_iteration}).
 
+map_dump(Server_name) ->
+    gen_server:call(Server_name, map_dump).
+
 handle_cast(
     {{async, BMU_manager}, {compare, Spectrum_with_id}}, 
     [Neurons, Neuron_worker_state]) ->
@@ -189,12 +193,14 @@ handle_cast(
             ),
         [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] = 
             lists:foldl(fun(Neuron, [Min_distance, Min_distance_neuron_coordinates]) ->
-                Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference),
-                % We don't want to consider a neuron twice. So we match against the bmu. If the neuron already is a BMU, skip it and just return the already known minimum value.
-                case [Spectrum_vector_distance < Min_distance, binary_to_term(Neuron#neuron.bmu_to_spectrum_id)] of
-                    [false, [-1, -1, -1]] -> [Min_distance, Min_distance_neuron_coordinates]; 
-                    [true,  [-1, -1, -1]] -> [Spectrum_vector_distance, Neuron#neuron.neuron_coordinates];
-                    _Other_list -> [Min_distance, Min_distance_neuron_coordinates]
+                case binary_to_term(Neuron#neuron.bmu_to_spectrum_id) of
+                    [-1, -1, -1] -> 
+                        Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference),
+                        case Spectrum_vector_distance < Min_distance of
+                            true -> [Spectrum_vector_distance, Neuron#neuron.neuron_coordinates];
+                            false -> [Min_distance, Min_distance_neuron_coordinates]
+                        end;
+                    _Else -> [Min_distance, Min_distance_neuron_coordinates]
                 end
             end,
             [576460752303423487, []], NewNeurons),  %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
@@ -263,8 +269,8 @@ handle_cast(load_spectra_to_neurons_worker, [_Neurons, Neuron_worker_state]) ->
         ]
     };
 
-handle_cast(stop, Neuron_state) ->
-    {stop, normal, Neuron_state}.
+handle_cast(stop, State) ->
+    {stop, normal, State}.
 
 handle_call({add_neuron, List_of_neurons}, _From, [Neurons, Neuron_worker_state]) ->
     {reply, ok, [Neurons ++ List_of_neurons, Neuron_worker_state]};
@@ -275,21 +281,45 @@ handle_call({remove_neuron, Number}, _From, [Neurons, Neuron_worker_state]) ->
 
 handle_call(
     {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, _From, [Neurons, Neuron_worker_state]) ->
-        %~ io:format("Setting BMU: ~w~n", [{coordinates, BMU_neuron_coordinates, spectrum_id, BMU_spectrum_id}]),
         {reply, ok, [
             lists:map(fun(Neuron) ->
                     case Neuron#neuron.neuron_coordinates of
-                        BMU_neuron_coordinates -> Neuron#neuron{bmu_to_spectrum_id = term_to_binary(BMU_spectrum_id) };
-                        _Other -> Neuron
+                        BMU_neuron_coordinates -> 
+                            Neuron#neuron{bmu_to_spectrum_id = term_to_binary(BMU_spectrum_id) };
+                        _Other -> 
+                            Neuron
                     end
                 end,
             Neurons
             ), 
             Neuron_worker_state
         ]};
-        
+
+handle_call(map_dump, _From, [Neurons, Neuron_worker_state]) ->
+    {
+        reply,
+        term_to_binary(
+            [
+                [Neuron#neuron.neuron_coordinates, 
+                 binary_to_term(Neuron#neuron.bmu_to_spectrum_id)
+                ] 
+            || Neuron <- Neurons]
+        ),
+        [Neurons, Neuron_worker_state]
+    };
+
 handle_call({set_iteration, New_iteration}, _From, [Neurons, Neuron_worker_state]) ->
-    {reply, ok, [Neurons, Neuron_worker_state#neuron_worker_state{iteration = New_iteration}]}.
+    {reply, ok, [
+        
+        lists:map(
+            fun(Neuron) ->
+                Neuron#neuron{
+                    bmu_to_spectrum_id = term_to_binary([-1,-1,-1]),
+                    last_spectrum_neuron_vector_difference = []
+                }
+            end,
+        Neurons), 
+        Neuron_worker_state#neuron_worker_state{iteration = New_iteration}]}.
 
 
 handle_info(Message, State) ->
