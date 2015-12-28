@@ -45,8 +45,15 @@ handle_call(get_iteration, _From, [Iteration, Max_iteration, Learning_step_begin
     {reply, Iteration, [Iteration, Max_iteration, Learning_step_begin_timestamp]};
 
 handle_call(next_iteration, _From, [Iteration, Max_iteration, Learning_step_begin_timestamp]) ->
-    io:format("Increasing Iteration ~w~n", [{Iteration, "->", Iteration+1}]),
-    io:format("Last iteration step was running for ~w seconds.~n", [timer:now_diff(os:timestamp(), Learning_step_begin_timestamp) * 1000000]),
-    iteration_event_handler:trigger_iteration_update(Iteration + 1),
-    {reply, Iteration + 1, [Iteration + 1, Max_iteration]}.
+    case Iteration of 
+        Max_iteration ->
+            io:format("I am done.");
+        _Smaller_than_max_iteration -> 
+            io:format("Increasing Iteration ~p~n", [{Iteration, "->", Iteration+1}]),
+            io:format("Last iteration step was running for ~w seconds.~n", [timer:now_diff(os:timestamp(), Learning_step_begin_timestamp) / 1000000]),
+            iteration_event_handler:trigger_iteration_update(Iteration + 1),
+            learning_step_manager:set_iteration({global, learning_step_manager}, Iteration +1),
+            neuron_event_handler:trigger_neuron_compare({compare, spectrum_dispatcher:get_spectrum_with_id(spectrum_dispatcher)})
+    end,
+    {reply, Iteration + 1, [Iteration + 1, Max_iteration, os:timestamp()]}.
 
