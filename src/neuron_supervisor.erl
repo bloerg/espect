@@ -1,6 +1,6 @@
 -module(neuron_supervisor).
 -behaviour(supervisor).
--export([start_link/2, start_link/3, start/2, start/3]).
+-export([start_link/1, start_link/2, start/1, start/2]).
 -export([init/1]).
 -export([force_stop/1]).
 -export([get_x_y_from_sequence/2]).
@@ -8,11 +8,12 @@
 
 % @doc Example start command: neuron_supervisor:start_link({local, testsup}, 10, {child_specs, 0, 200, {neuron_coordinates, 0}}).
 
-start_link(Server_name, Number_of_workers_per_supervisor, 
+start_link(Server_name,
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, Next_free_neuron}
         }
     ) ->
+    Number_of_workers_per_supervisor = erlang:system_info(schedulers_online) * 4,
     supervisor:start_link(
         Server_name, 
         ?MODULE, 
@@ -23,11 +24,12 @@ start_link(Server_name, Number_of_workers_per_supervisor,
         ]
     ).
 
-start_link(Number_of_workers_per_supervisor, 
+start_link( 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, Next_free_neuron}
         }
     ) ->
+    Number_of_workers_per_supervisor = erlang:system_info(schedulers_online) * 4,
     supervisor:start_link(
         ?MODULE, 
         [Number_of_workers_per_supervisor, 
@@ -37,11 +39,12 @@ start_link(Number_of_workers_per_supervisor,
         ]
     ).
 
-start(Server_name, Number_of_workers_per_supervisor, 
+start(Server_name, 
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, Next_free_neuron}
         }
     ) ->
+    Number_of_workers_per_supervisor = erlang:system_info(schedulers_online) * 4,
     supervisor:start(
         Server_name, 
         ?MODULE, 
@@ -52,11 +55,12 @@ start(Server_name, Number_of_workers_per_supervisor,
         ]
     ).
 
-start(Number_of_workers_per_supervisor, 
+start(
         {child_specs, Iteration, Max_iteration, 
           {neuron_coordinates, Next_free_neuron}
         }
     ) ->
+    Number_of_workers_per_supervisor = erlang:system_info(schedulers_online) * 4,
     supervisor:start(
         ?MODULE, 
         [Number_of_workers_per_supervisor, 
@@ -97,6 +101,9 @@ init([Number_of_workers_per_supervisor,
     
     %Start BMU manager
     bmu_manager:start_link({global, bmu_manager}, Iteration, Max_iteration),
+    
+    %Start SOM manager
+    som_manager:start_link({global, som_manager}, Iteration, Max_iteration),
     
     Supervisor_specification = {
         one_for_one, 
