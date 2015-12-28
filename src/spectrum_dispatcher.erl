@@ -210,7 +210,7 @@ handle_call(
         {reply, 
          get_minimum_som_dimensions_helper(
             length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) + 
-            length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)
+            length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_used)
         ), 
          Spectrum_dispatcher_state
         };
