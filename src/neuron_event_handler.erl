@@ -37,9 +37,8 @@ handle_event({compare_async, Spectrum_with_id}, [{pid, Pid}]) ->
     
 handle_event({update, BMU_neuron_coordinates}, [{pid, Pid}]) ->
     neurons:update_neuron(async, Pid, BMU_neuron_coordinates),
-    {ok, [{pid, Pid}]}
-.
-
+    {ok, [{pid, Pid}]}.
+    
 handle_call(_, State) ->
     {ok, ok, State}.
 
@@ -63,3 +62,4 @@ trigger_neuron_compare({compare, Spectrum_with_id}) ->
 
 trigger_neuron_update({update, BMU_neuron_coordinates}) ->
     gen_event:notify({global, neuron_event_manager}, {update, BMU_neuron_coordinates}).
+
