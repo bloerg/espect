@@ -93,9 +93,9 @@ init([Number_of_workers_per_supervisor,
     iteration_event_handler:start_link({global, iteration_event_manager}),
     
     %start spectrum dispatcher and determine SOM size from number of spectra files
-    spectrum_dispatcher:start_link({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/", binary, 1}, Iteration, Max_iteration),
-    [X_max, Y_max] = spectrum_dispatcher:get_minimum_som_dimensions(spectrum_dispatcher),
-    
+    spectrum_dispatcher:start_link({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/binary/", binary, 1}, Iteration, Max_iteration),
+    [SOM_x_edge_length, SOM_y_edge_length] = spectrum_dispatcher:get_minimum_som_dimensions(spectrum_dispatcher),
+    [X_max, Y_max] = [SOM_x_edge_length - 1, SOM_y_edge_length -1],
     %Start neuron event manager
     neuron_event_handler:start_link({global, neuron_event_manager}),
     
@@ -112,12 +112,14 @@ init([Number_of_workers_per_supervisor,
     },
     % make a list of {x,y} coordinate tuples for neurons
     %Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers_per_supervisor)],
-    Number_of_neurons = X_max * Y_max,
-    Number_of_neurons_per_worker = (Number_of_neurons - Next_free_neuron) div Number_of_workers_per_supervisor + (Number_of_neurons - Next_free_neuron) rem Number_of_workers_per_supervisor,
+    Number_of_neurons = SOM_x_edge_length * SOM_y_edge_length,
+    Number_of_neurons_per_worker = (Number_of_neurons - Next_free_neuron) div Number_of_workers_per_supervisor +1,
+    io:format("Number of Neurons per worker: ~w~n", [Number_of_neurons_per_worker]),
     Children_neuron_coordinate_ranges = [
-            [Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons)] 
+            [Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1)] 
             || Lower_limit <- lists:seq(Next_free_neuron, Number_of_neurons, Number_of_neurons_per_worker) 
     ],
+    io:format("Children_neuron_coordinate_ranges: ~w~n", [Children_neuron_coordinate_ranges]),
     Child_specification_list = 
         [ 
             {Neuron_coordinate_range, 
