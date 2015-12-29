@@ -21,18 +21,26 @@ make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_fo
             fun([X,Y]) -> 
                 FileName=string:join(["spec-", integer_to_list(Y*MaxX+X), "-", integer_to_list(X+Y), "-", integer_to_list(X), ".spec"], ""),
                 %erlang:display({debug, sample_spectra, [X,Y], X*(Y+1)+X}),
-                OutputFile=string:join([BaseDirectory, "/", FileName], ""),
                 %erlang:display({debug, sample_spectra, write_to_file, OutputFile}),
                 case File_format of
                     plain ->
+                        Output_file_plain=string:join([BaseDirectory, "/", FileName], ""),
                         ok = write_sample_spectrum_to_plain_file(
-                            OutputFile, 
+                            Output_file_plain, 
                             make_sine_spectrum(SpectrumLength)
                         );
                     binary ->
+                        Output_file_binary=string:join([BaseDirectory, "/binary/", FileName], ""),
+                        Spectrum = make_sine_spectrum(SpectrumLength),
                         ok = write_sample_spectrum_to_binary_file(
-                            OutputFile, 
-                            term_to_binary([[Y*MaxX + X, X+Y, X], make_sine_spectrum(SpectrumLength)])
+                            Output_file_binary, 
+                            term_to_binary([[Y*MaxX + X, X+Y, X], Spectrum])
+                        ),
+                        %%write plain version of spectrum to plain directory for easy plotting
+                        Output_file_plain=string:join([BaseDirectory, "/plain/", FileName], ""),
+                        ok = write_sample_spectrum_to_plain_file(
+                            Output_file_plain, 
+                            Spectrum
                         )
                 end
             end,
