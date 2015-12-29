@@ -141,7 +141,7 @@ load_spectrum_from_filesystem({Direction, Path}) ->
 
 %% @doc init neuron_workers with spectra
 load_spectra_to_neurons_worker(Server_name) ->
-    gen_server:cast(Server_name, load_spectra_to_neurons_worker).
+    gen_server:call(Server_name, load_spectra_to_neurons_worker, 3600*1000).
 
 %% @doc add neurons to the neurons list
 %List_of_neurons must be list of #neuron record
@@ -247,10 +247,14 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
     learning_step_manager:update_complete(self()),
     {noreply, [NewNeurons, Neuron_worker_state]};
 
-handle_cast(load_spectra_to_neurons_worker, [_Neurons, Neuron_worker_state]) ->
+handle_cast(stop, State) ->
+    {stop, normal, State}.
+
+
+handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_state]) ->
     [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
-    {noreply, [
+    {reply, ok, [
             [ 
             #neuron {
                     %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
@@ -268,9 +272,6 @@ handle_cast(load_spectra_to_neurons_worker, [_Neurons, Neuron_worker_state]) ->
             Neuron_worker_state
         ]
     };
-
-handle_cast(stop, State) ->
-    {stop, normal, State}.
 
 handle_call({add_neuron, List_of_neurons}, _From, [Neurons, Neuron_worker_state]) ->
     {reply, ok, [Neurons ++ List_of_neurons, Neuron_worker_state]};
