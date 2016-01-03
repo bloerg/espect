@@ -24,7 +24,7 @@
 }).
 
 -record(neuron_worker_state, {
-    spectrum_dispatcher = spectrum_dispatcher,  %Name of the spectrum dispatcher server
+    spectrum_dispatcher = {global,spectrum_dispatcher},  %Name of the spectrum dispatcher server
     neuron_coordinate_range = [], %interval of the sequence of neuron coordinates, element of [0 ... Max_x * Max_y]; this is for initalisation, it may be wrong after adding and remove spectra using add_spectra() and remove_spectra()
     som_dimensions = [], % maximum x and maximum y coordinate of the self organizing map
     iteration = 0, %iteration step
