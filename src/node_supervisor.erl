@@ -18,17 +18,7 @@ init(_Args) ->
         10,
         10
     },
-    % A neuron supervisor is needed on every node
-    Child_specification_list = [
-        %~ {
-            %~ neuron_supervisor, 
-            %~ {neuron_supervisor, start_link, [{local, testsup}, {child_specs, 0, 200, {neuron_coordinates, 0}}]},
-            %~ temporary,
-            %~ 10000,
-            %~ supervisor,
-            %~ [neuron_supervisor]
-        %~ }
-    ],
+    Child_specification_list = [],
     {ok, {Supervisor_specification, Child_specification_list}}.
 
 join_espect_cluster(Primary_node, Cluster_cookie) ->
