@@ -1,0 +1,36 @@
+{application, espect, 
+    [ 
+        {description, "Erlang spectra clustering tool"},
+        {vns, "0.1.0"},
+        {modules, [
+                cluster_supervisor,
+                node_supervisor,
+                neuron_supervisor,
+                som_manager,
+                spectrum_dispatcher,
+                spectrum_handling,
+                iteration_state_server,
+                iteration_event_handler,
+                learning_step_manager,
+                bmu_manager,
+                neurons,
+                vector_operations
+            ]
+        },
+        {registered, [
+                cluster_supervisor,
+                node_supervisor,
+                neuron_supervisor,
+                som_manager,
+                spectrum_dispatcher,
+                iteration_state_server,
+                iteration_event_handler,
+                learning_step_manager,
+                bmu_manager
+            ]
+        },
+        {env, [{iteration, 0}, {max_iteration, 200}]},
+        {applications, [kernel, stdlib]},
+        {mod, {espect, []}}
+    ]
+}.
