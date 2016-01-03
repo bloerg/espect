@@ -36,10 +36,21 @@ join_espect_cluster(Primary_node, Cluster_cookie) ->
     case net_adm:ping(Primary_node) of
         pang -> io:format("Could not connect to cluster.", []);
         pong ->
-            cluster_supervisor:register_node(node())
+            supervisor:start_child(node_supervisor,
+                {
+                    neuron_supervisor,
+                    {neuron_supervisor, start_link, [{local, neuron_supervisor}, {child_specs, 0, 200, {neuron_coordinates, 0}}]},
+                    temporary,
+                    10000,
+                    supervisor,
+                    [neuron_supervisor]
+                }
+            )
     end.
 
 start_espect_cluster(Cluster_cookie) ->
+
+    %start the cluster_supervisor on this node
     supervisor:start_child(node_supervisor,
         {
             cluster_supervisor,
@@ -49,7 +60,10 @@ start_espect_cluster(Cluster_cookie) ->
             supervisor,
             [cluster_supervisor]
         }
-    )
+    ),
+    
+    %then start a neuron_supervisor and join it to this node
+    join_espect_cluster(node(), Cluster_cookie)
 .
 
 
