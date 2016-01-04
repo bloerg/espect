@@ -56,7 +56,7 @@ trigger_load_spectra_to_neurons_workers() ->
 
 trigger_neuron_compare({compare, Spectrum_with_id}) ->
     %gen_event:sync_notify(neuron_event_manager, {compare, Spectrum, Spectrum_metadata}).
-    %erlang:write(gen_event:which_handlers(neuron_event_manager)),
+    %erlang:write(gen_event:which_handlers({global, neuron_event_manager})),
     bmu_manager:set_neurons_worker_list({global, bmu_manager}, gen_event:which_handlers({global, neuron_event_manager})),
     gen_event:notify({global, neuron_event_manager}, {compare_async, Spectrum_with_id}).
 

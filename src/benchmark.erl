@@ -112,7 +112,7 @@ speed_test_update_neuron(Spectrum_width, Repetitions) ->
 .
 
 speed_test_event_handler_trigger_neuron_compare(Iterations) ->
-    Number_of_neurons = length(gen_event:which_handlers(neuron_event_manager)),
+    Number_of_neurons = length(gen_event:which_handlers({global, neuron_event_manager})),
     T1 = os:timestamp(),
     lists:foreach(
         fun(_Iteration) ->
@@ -124,7 +124,7 @@ speed_test_event_handler_trigger_neuron_compare(Iterations) ->
     erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", compares per second: ", Iterations*Number_of_neurons/timer:now_diff(T2,T1)*1000000}).
     
 speed_test_event_handler_trigger_neuron_update(Iterations) ->
-    Number_of_neurons = length(gen_event:which_handlers(neuron_event_manager)),
+    Number_of_neurons = length(gen_event:which_handlers({global, neuron_event_manager})),
     T1 = os:timestamp(),
     lists:foreach(
         fun(_Iteration) ->
