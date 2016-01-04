@@ -83,27 +83,10 @@ init([Number_of_workers_per_supervisor,
         }
     ]) ->
     
-    %start iteration state server
-    iteration_state_server:start_link({global, iteration_state_server}, Iteration, Max_iteration),
-    
-    %start learning step manager
-    learning_step_manager:start_link({global, learning_step_manager}),
 
-    %start iteration event manager
-    iteration_event_handler:start_link({global, iteration_event_manager}),
-    
-    %start spectrum dispatcher and determine SOM size from number of spectra files
-    spectrum_dispatcher:start_link({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/binary/", binary, 1}, Iteration, Max_iteration),
-    [SOM_x_edge_length, SOM_y_edge_length] = spectrum_dispatcher:get_minimum_som_dimensions(spectrum_dispatcher),
+    [SOM_x_edge_length, SOM_y_edge_length] = spectrum_dispatcher:get_minimum_som_dimensions({global, spectrum_dispatcher}),
     [X_max, Y_max] = [SOM_x_edge_length - 1, SOM_y_edge_length -1],
-    %Start neuron event manager
-    neuron_event_handler:start_link({global, neuron_event_manager}),
-    
-    %Start BMU manager
-    bmu_manager:start_link({global, bmu_manager}, Iteration, Max_iteration),
-    
-    %Start SOM manager
-    som_manager:start_link({global, som_manager}, Iteration, Max_iteration),
+
     
     Supervisor_specification = {
         one_for_one, 
@@ -115,21 +98,25 @@ init([Number_of_workers_per_supervisor,
     Number_of_neurons = SOM_x_edge_length * SOM_y_edge_length,
     Number_of_neurons_per_worker = (Number_of_neurons - Next_free_neuron) div Number_of_workers_per_supervisor +1,
     io:format("Number of Neurons per worker: ~w~n", [Number_of_neurons_per_worker]),
-    Children_neuron_coordinate_ranges = [
-            [Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1)] 
+    %~ Children_neuron_coordinate_ranges = [
+            %~ [Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1)] 
+            %~ || Lower_limit <- lists:seq(Next_free_neuron, Number_of_neurons, Number_of_neurons_per_worker) 
+    %~ ],
+    Children_neuron_indeces = [
+            lists:seq(Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1))
             || Lower_limit <- lists:seq(Next_free_neuron, Number_of_neurons, Number_of_neurons_per_worker) 
     ],
-    io:format("Children_neuron_coordinate_ranges: ~w~n", [Children_neuron_coordinate_ranges]),
+    io:format("Children_neuron_coordinate_indeces: ~w~n", [Children_neuron_indeces]),
     Child_specification_list = 
         [ 
-            {Neuron_coordinate_range, 
-                {neurons, start_link, [spectrum_dispatcher, Neuron_coordinate_range, [X_max, Y_max], Iteration, Max_iteration]},
+            {hd(Neuron_indeces), 
+                {neurons, start_link, [{global, spectrum_dispatcher}, Neuron_indeces, [X_max, Y_max], Iteration, Max_iteration]},
                 permanent,
                 10000,
                 worker,
                 [neuron]
             }
-        || Neuron_coordinate_range <- Children_neuron_coordinate_ranges
+        || Neuron_indeces <- Children_neuron_indeces
         ],
     {ok, 
         {
