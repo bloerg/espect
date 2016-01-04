@@ -25,18 +25,18 @@
 
 -record(neuron_worker_state, {
     spectrum_dispatcher = {global,spectrum_dispatcher},  %Name of the spectrum dispatcher server
-    neuron_coordinate_range = [], %interval of the sequence of neuron coordinates, element of [0 ... Max_x * Max_y]; this is for initalisation, it may be wrong after adding and remove spectra using add_spectra() and remove_spectra()
+    neuron_indeces = [], %List of neuron index, i. e. the serial index starting at 0 and ending at X_max*Y_max
     som_dimensions = [], % maximum x and maximum y coordinate of the self organizing map
     iteration = 0, %iteration step
     max_iteration = 200 %maximum number of iterations
 }).
 
 %%Start a neuron server
-start(Server_name, Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+start(Server_name, Spectrum_dispatcher, Neuron_indeces, [Max_x, Max_y], Iteration, Max_iteration) ->
     gen_server:start(Server_name, ?MODULE, 
             #neuron_worker_state {
                 spectrum_dispatcher = Spectrum_dispatcher,
-                neuron_coordinate_range = Neuron_coordinate_range,
+                neuron_indeces = Neuron_indeces,
                 som_dimensions = [Max_x, Max_y],
                 iteration = Iteration,
                 max_iteration = Max_iteration
@@ -44,11 +44,11 @@ start(Server_name, Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y],
         ,[]
     ).
 
-start_link(Server_name, Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+start_link(Server_name, Spectrum_dispatcher, Neuron_indeces, [Max_x, Max_y], Iteration, Max_iteration) ->
     gen_server:start_link(Server_name, ?MODULE, 
             #neuron_worker_state {
                 spectrum_dispatcher = Spectrum_dispatcher,
-                neuron_coordinate_range = Neuron_coordinate_range,
+                neuron_indeces = Neuron_indeces,
                 som_dimensions = [Max_x, Max_y],
                 iteration = Iteration,
                 max_iteration = Max_iteration
@@ -56,11 +56,11 @@ start_link(Server_name, Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Ma
         ,[]
     ).
 
-start(Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+start(Spectrum_dispatcher, Neuron_indeces, [Max_x, Max_y], Iteration, Max_iteration) ->
     gen_server:start(?MODULE, 
             #neuron_worker_state {
                 spectrum_dispatcher = Spectrum_dispatcher,
-                neuron_coordinate_range = Neuron_coordinate_range,
+                neuron_indeces = Neuron_indeces,
                 som_dimensions = [Max_x, Max_y],
                 iteration = Iteration,
                 max_iteration = Max_iteration
@@ -68,11 +68,11 @@ start(Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, M
         ,[]
     ).
 
-start_link(Spectrum_dispatcher, Neuron_coordinate_range, [Max_x, Max_y], Iteration, Max_iteration) ->
+start_link(Spectrum_dispatcher, Neuron_indeces, [Max_x, Max_y], Iteration, Max_iteration) ->
     gen_server:start_link(?MODULE, 
             #neuron_worker_state {
                 spectrum_dispatcher = Spectrum_dispatcher,
-                neuron_coordinate_range = Neuron_coordinate_range,
+                neuron_indeces = Neuron_indeces,
                 som_dimensions = [Max_x, Max_y],
                 iteration = Iteration,
                 max_iteration = Max_iteration
@@ -95,28 +95,7 @@ terminate(_Reason, _Neuron_state) ->
 init(State) ->
     gen_event:add_handler({global, neuron_event_manager}, {neuron_event_handler, {neuron, self()}}, [{pid, self()}]),
     gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
-
-    [First_neuron, Last_neuron] = State#neuron_worker_state.neuron_coordinate_range,
-    [X_max, _Y_max] = State#neuron_worker_state.som_dimensions,
-    
-    {ok, [
-            [ 
-            %~ #neuron {
-                    %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
-                    
-                    %~ %% get Spectrum from spectrum_dispatcher
-                    %~ neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(State#neuron_worker_state.spectrum_dispatcher),
-                    
-                    %~ %% get Spectrum path form spectrum_dispatcher and load spectrum from filesystem
-                    %~ neuron_vector = load_spectrum_from_filesystem(
-                        %~ spectrum_dispatcher:get_spectrum_path_for_neuron_initialization(State#neuron_worker_state.spectrum_dispatcher)
-                    %~ ),
-                    %~ neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
-                %~ } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
-            ],
-            State
-        ]
-    }.
+    {ok, [[], State]}.
 
 
 load_spectrum_from_filesystem({Direction, Path}) ->
@@ -252,7 +231,7 @@ handle_cast(stop, State) ->
 
 
 handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_state]) ->
-    [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
+    %~ [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
     {reply, ok, [
             [ 
@@ -267,7 +246,7 @@ handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_stat
                         %~ spectrum_dispatcher:get_spectrum_path_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher)
                     %~ ),
                     neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
-                } || Sequence_number <- lists:seq(First_neuron, Last_neuron) 
+                } || Sequence_number <- Neuron_worker_state#neuron_worker_state.neuron_indeces 
             ],
             Neuron_worker_state
         ]
