@@ -6,7 +6,7 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([handle_info/2]).
--export([init/1, load_spectra_to_neurons_worker/1]).
+-export([init/1, set_neuron_indeces/2, load_spectra_to_neurons_worker/1]).
 -export([add_neurons/2, remove_neurons/2]).
 -export([get_neuron_spectrum_distance/2, get_neuron_spectrum_distance/3]).
 -export([set_bmu/3, set_iteration/2]).
@@ -139,6 +139,10 @@ get_neuron_spectrum_distance(Server_name, Spectrum_with_id) ->
 get_neuron_spectrum_distance({async, BMU_manager}, Server_name, Spectrum_with_id) ->
     gen_server:cast(Server_name, {{async, BMU_manager}, {compare, Spectrum_with_id}}).
 
+%% @doc set neuron indeces
+set_neuron_indeces(Neurons_worker_name, Indeces) ->
+    gen_server:call(Neurons_worker_name, {set_neuron_indeces, Indeces}).
+
 set_bmu(Neurons_worker_name, Neuron_coordinates, Spectrum_id) ->
     gen_server:call(Neurons_worker_name, {set_bmu, Neuron_coordinates, Spectrum_id}).
 
@@ -229,6 +233,14 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
 handle_cast(stop, State) ->
     {stop, normal, State}.
 
+
+handle_call({set_neuron_indeces, Indeces}, _From, [Neurons, Neuron_worker_state]) ->
+    {reply, ok, 
+        [
+            Neurons,
+            Neuron_worker_state#neuron_worker_state{neuron_indeces = Indeces}
+        ]
+    };
 
 handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_state]) ->
     %~ [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
