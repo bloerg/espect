@@ -51,8 +51,8 @@ distribute_neuron_indeces() ->
 
 init(Cluster_cookie) ->
     erlang:set_cookie(node(), Cluster_cookie),
-    Iteration = application:get_env(iteration),
-    Max_iteration = application:get_env(max_iteration),
+    {ok, Iteration} = application:get_env(iteration),
+    {ok, Max_iteration} = application:get_env(max_iteration),
     
     Iteration_state_server_spec = {
         iteration_state_server, 
@@ -81,9 +81,10 @@ init(Cluster_cookie) ->
         [iteration_event_manager]
     },
     
+    {ok, Spectra_directory} = application:get_env(spectra_directory),
     Spectrum_dispatcher_spec = {
         spectrum_dispatcher, 
-        {spectrum_dispatcher, start_link, [{global, spectrum_dispatcher}, {filesystem, application:get_env(spectra_directory), binary, 1}, Iteration, Max_iteration]},
+        {spectrum_dispatcher, start_link, [{global, spectrum_dispatcher}, {filesystem, Spectra_directory, binary, 1}, Iteration, Max_iteration]},
         temporary,
         10000,
         worker,
