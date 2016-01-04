@@ -35,16 +35,34 @@ distribute_neuron_indeces() ->
     Number_of_workers = length(Neurons_worker_list),
     [SOM_x_edge_length, SOM_y_edge_length] = spectrum_dispatcher:get_minimum_som_dimensions({global, spectrum_dispatcher}),
     Number_of_neurons = SOM_x_edge_length * SOM_y_edge_length,
-    Number_of_neurons_per_worker = Number_of_neurons div Number_of_workers +1,
+    Number_of_neurons_per_worker = Number_of_neurons div Number_of_workers,
     Neurons_indeces = [
         lists:seq(Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1))
         || Lower_limit <- lists:seq(0, Number_of_neurons, Number_of_neurons_per_worker) 
     ],
 
+
+    %% if length(Number_of_neurons) rem length(Number_of_workers) > 0 make sure that leftover indeces are distributed over the workers
+    case length(Neurons_indeces) > length(Neurons_worker_list) of
+        true ->
+            Last = lists:last(Neurons_indeces),
+            Neurons_indeces2 = [
+                    case List_count > length(Last) of 
+                        true ->
+                            lists:nth(List_count, Neurons_indeces);
+                        false->
+                            [lists:nth(List_count, Last) |lists:nth(List_count, Neurons_indeces)]
+                    end
+                || List_count <- lists:seq(1,length(Neurons_indeces)-1)
+            ];
+        false -> Neurons_indeces2 = Neurons_indeces
+    end,
+
+
     lists:foreach(fun({Neuron_worker_pid, Neuron_indeces}) ->
         neurons:set_neuron_indeces(Neuron_worker_pid, Neuron_indeces)
     end,
-    lists:zip(Neurons_worker_list, Neurons_indeces))
+    lists:zip(Neurons_worker_list, Neurons_indeces2))
 
 .
     
