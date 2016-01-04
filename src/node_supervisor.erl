@@ -52,7 +52,7 @@ start_espect_cluster(Cluster_cookie) ->
         }
     ),
     
-    %then start a neuron_supervisor and join it to this node
+    %then start a neuron_supervisor and join with this cluster
     join_espect_cluster(node(), Cluster_cookie)
 .
 
