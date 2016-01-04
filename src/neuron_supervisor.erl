@@ -93,31 +93,40 @@ init([Number_of_workers_per_supervisor,
         10,
         10
     },
-    % make a list of {x,y} coordinate tuples for neurons
-    %Children_coordinates = [get_x_y_from_sequence(X_max, Neuron_index) || Neuron_index <- lists:seq(Next_free_neuron, Next_free_neuron + Number_of_workers_per_supervisor)],
-    Number_of_neurons = SOM_x_edge_length * SOM_y_edge_length,
-    Number_of_neurons_per_worker = (Number_of_neurons - Next_free_neuron) div Number_of_workers_per_supervisor +1,
-    io:format("Number of Neurons per worker: ~w~n", [Number_of_neurons_per_worker]),
-    %~ Children_neuron_coordinate_ranges = [
-            %~ [Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1)] 
+
+    %~ Number_of_neurons = SOM_x_edge_length * SOM_y_edge_length,
+    %~ Number_of_neurons_per_worker = (Number_of_neurons - Next_free_neuron) div Number_of_workers_per_supervisor +1,
+    %~ io:format("Number of Neurons per worker: ~w~n", [Number_of_neurons_per_worker]),
+
+    %~ Children_neuron_indeces = [
+            %~ lists:seq(Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1))
             %~ || Lower_limit <- lists:seq(Next_free_neuron, Number_of_neurons, Number_of_neurons_per_worker) 
     %~ ],
-    Children_neuron_indeces = [
-            lists:seq(Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1))
-            || Lower_limit <- lists:seq(Next_free_neuron, Number_of_neurons, Number_of_neurons_per_worker) 
-    ],
-    io:format("Children_neuron_coordinate_indeces: ~w~n", [Children_neuron_indeces]),
+    %~ io:format("Children_neuron_coordinate_indeces: ~w~n", [Children_neuron_indeces]),
+    %~ Child_specification_list = 
+        %~ [ 
+            %~ {hd(Neuron_indeces), 
+                %~ {neurons, start_link, [{global, spectrum_dispatcher}, Neuron_indeces, [X_max, Y_max], Iteration, Max_iteration]},
+                %~ permanent,
+                %~ 10000,
+                %~ worker,
+                %~ [neuron]
+            %~ }
+        %~ || Neuron_indeces <- Children_neuron_indeces
+        %~ ],
+        
     Child_specification_list = 
-        [ 
-            {hd(Neuron_indeces), 
-                {neurons, start_link, [{global, spectrum_dispatcher}, Neuron_indeces, [X_max, Y_max], Iteration, Max_iteration]},
+        [
+            {Id,
+                {neurons, start_link, [{global, spectrum_dispatcher}, [], [X_max, Y_max],Iteration, Max_iteration]},
                 permanent,
                 10000,
                 worker,
                 [neuron]
             }
-        || Neuron_indeces <- Children_neuron_indeces
+            || Id <- lists:seq(1, Number_of_workers_per_supervisor)
         ],
+
     {ok, 
         {
         Supervisor_specification, 
