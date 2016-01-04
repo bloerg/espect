@@ -99,10 +99,10 @@ set_iteration(Server_name, New_iteration) ->
     gen_server:call(Server_name, {set_iteration, New_iteration}).
     
 next_learning_step() ->
-    gen_server:call(?MODULE, next_learning_step).
+    gen_server:call({global, ?MODULE}, next_learning_step).
     
 reset_speclist_index() ->
-    gen_server:call(?MODULE, reset_speclist_index).
+    gen_server:call({global, ?MODULE}, reset_speclist_index).
     
 handle_cast(stop, Spectrum_dispatcher_state) ->
     {stop, normal, Spectrum_dispatcher_state}.
