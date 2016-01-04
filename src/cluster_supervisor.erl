@@ -83,7 +83,7 @@ init(Cluster_cookie) ->
     
     Spectrum_dispatcher_spec = {
         spectrum_dispatcher, 
-        {spectrum_dispatcher, start_link, [{global, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/binary/", binary, 1}, Iteration, Max_iteration]},
+        {spectrum_dispatcher, start_link, [{global, spectrum_dispatcher}, {filesystem, application:get_env(spectra_directory), binary, 1}, Iteration, Max_iteration]},
         temporary,
         10000,
         worker,
