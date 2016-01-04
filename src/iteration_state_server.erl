@@ -55,7 +55,7 @@ handle_call(next_iteration, _From, [Iteration, Max_iteration, Learning_step_begi
             som_manager:dump_som(string:join(["/var/tmp/som_", integer_to_list(Iteration + 1), ".csv"],"")),
             iteration_event_handler:trigger_iteration_update(Iteration + 1),
             learning_step_manager:set_iteration({global, learning_step_manager}, Iteration +1),
-            neuron_event_handler:trigger_neuron_compare({compare, spectrum_dispatcher:get_spectrum_with_id(spectrum_dispatcher)})
+            neuron_event_handler:trigger_neuron_compare({compare, spectrum_dispatcher:get_spectrum_with_id({global, spectrum_dispatcher})})
     end,
     {reply, Iteration + 1, [Iteration + 1, Max_iteration, os:timestamp()]}.
 
