@@ -2,6 +2,7 @@
 -behaviour(supervisor).
 -export([start_link/1]).
 -export([init/1]).
+-export([distribute_neuron_indeces/0]).
 
 start_link(Cluster_cookie) ->
     supervisor:start_link(
@@ -9,6 +10,44 @@ start_link(Cluster_cookie) ->
         ?MODULE, 
         Cluster_cookie
     ).
+
+
+
+% Takes List like [{neuron_event_handler,{neuron,<0.91.0>}}, {neuron_event_handler,{neuron,<0.91.0>}},...]
+% as input and outputs a list conainting neurons worker pids
+filter_neurons_worker_list(Neurons_worker_list) ->
+    filter_neurons_worker_list(Neurons_worker_list, []).
+filter_neurons_worker_list([], Filtered_list) ->
+    Filtered_list;
+filter_neurons_worker_list(Neurons_worker_list, Filtered_list) -> 
+    [Head|Tail] = Neurons_worker_list,
+    case Head of
+        {neuron_event_handler,{neuron, Pid}} ->
+            filter_neurons_worker_list(Tail, [Pid|Filtered_list]);
+        _Other -> filter_neurons_worker_list(Tail, Filtered_list)
+    end.
+
+% @doc distributes the indeces over all neuron workers after initialisation
+% this has to happen before computations starts and after at least the cluster supervisor was started
+% even better, if the initial set of cluster nodes is started, too
+distribute_neuron_indeces() ->
+    Neurons_worker_list = filter_neurons_worker_list(gen_event:which_handlers({global, neuron_event_manager})),
+    Number_of_workers = length(Neurons_worker_list),
+    [SOM_x_edge_length, SOM_y_edge_length] = spectrum_dispatcher:get_minimum_som_dimensions({global, spectrum_dispatcher}),
+    Number_of_neurons = SOM_x_edge_length * SOM_y_edge_length,
+    Number_of_neurons_per_worker = Number_of_neurons div Number_of_workers +1,
+    Neurons_indeces = [
+        lists:seq(Lower_limit, min(Lower_limit + Number_of_neurons_per_worker-1, Number_of_neurons - 1))
+        || Lower_limit <- lists:seq(0, Number_of_neurons, Number_of_neurons_per_worker) 
+    ],
+
+    lists:foreach(fun({Neuron_worker_pid, Neuron_indeces}) ->
+        neurons:set_neuron_indeces(Neuron_worker_pid, Neuron_indeces)
+    end,
+    lists:zip(Neurons_worker_list, Neurons_indeces))
+
+.
+    
 
 init(Cluster_cookie) ->
     erlang:set_cookie(node(), Cluster_cookie),
