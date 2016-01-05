@@ -17,7 +17,7 @@
 -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
 
 -record(neuron, {
-    neuron_vector = [], %the vector representing the spectrum occupied by the neuron
+    neuron_vector = term_to_binary([]), %the vector representing the spectrum occupied by the neuron
     neuron_coordinates = [], %the coordinates of the neuron in the som
     bmu_to_spectrum_id = term_to_binary([-1,-1,-1]), %the neuron is BMU to spectrum with id
     last_spectrum_neuron_vector_difference = [] %the vector difference computed in the compare process, used later for the update computation
@@ -167,7 +167,7 @@ handle_cast(
         %% FIXME: I want this with tail recursion, not map
         NewNeurons =
             lists:map(fun(Neuron) ->
-                Neuron_vector_difference = vector_operations:vector_difference(Neuron#neuron.neuron_vector, Spectrum),
+                Neuron_vector_difference = vector_operations:vector_difference(binary_to_term(Neuron#neuron.neuron_vector), Spectrum),
                 Neuron#neuron{
                     last_spectrum_neuron_vector_difference = Neuron_vector_difference
                 }
@@ -205,21 +205,23 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_sta
     NewNeurons =
         %% FIXME: I want this with tail recursion, not map
         lists:map(fun(Neuron) ->
-                case length(Neuron#neuron.neuron_vector) of 
+                case length(binary_to_term(Neuron#neuron.neuron_vector)) of 
                     0 -> Neuron;
                     _Other ->
-                        Neuron#neuron{
-                            neuron_vector = vector_operations:vector_sum(
-                                Neuron#neuron.neuron_vector,
-                                vector_operations:scalar_multiplication(
-                                    neighbourhood_function1(
-                                        Neuron_worker_state#neuron_worker_state.iteration, 
-                                        Neuron_worker_state#neuron_worker_state.max_iteration, 
-                                        Neuron#neuron.neuron_coordinates, 
-                                        BMU_neuron_coordinates
-                                    ),
-                                    %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
-                                    Neuron#neuron.last_spectrum_neuron_vector_difference
+                        Neuron#neuron{ neuron_vector = 
+                            term_to_binary(
+                                vector_operations:vector_sum(
+                                    binary_to_term(Neuron#neuron.neuron_vector),
+                                    vector_operations:scalar_multiplication(
+                                        neighbourhood_function1(
+                                            Neuron_worker_state#neuron_worker_state.iteration, 
+                                            Neuron_worker_state#neuron_worker_state.max_iteration, 
+                                            Neuron#neuron.neuron_coordinates, 
+                                            BMU_neuron_coordinates
+                                        ),
+                                        %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
+                                        Neuron#neuron.last_spectrum_neuron_vector_difference
+                                    )
                                 )
                             )
                         }
@@ -250,7 +252,7 @@ handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_stat
             #neuron {
                     %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
                     
-                    %~ %% get Spectrum from spectrum_dispatcher
+                    %~ %% get Spectrum from spectrum_dispatcher, return is binary
                     neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
                     
                     %% get Spectrum path form spectrum_dispatcher and load spectrum from filesystem
