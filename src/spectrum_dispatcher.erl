@@ -174,7 +174,7 @@ handle_call(
                 ),
                 Spectrum = lists:reverse(Temp_spectrum)
         end,
-        {reply, Spectrum, 
+        {reply, term_to_binary(Spectrum), 
             Spectrum_dispatcher_state#spectrum_dispatcher_state{
                 spectra_source = {filesystem, Directory, File_format, Spec_list_index +1}
             }
