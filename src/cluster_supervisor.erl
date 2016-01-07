@@ -136,6 +136,14 @@ init(Cluster_cookie) ->
         [neuron_event_handler]
     },
 
+    Neuron_init_manager_spec = {
+        neuron_init_manager, 
+        {neuron_initialization_manager, start_link, [{global, neuron_initialization_manager}]},
+        temporary,
+        10000,
+        worker,
+        [neuron_initialization_manager]
+    },
     
     Supervisor_specification = {
         one_for_one, 
