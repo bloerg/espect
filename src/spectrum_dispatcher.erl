@@ -6,12 +6,11 @@
 -export([handle_cast/2]).
 -export([handle_call/3]).
 -export([init/1]).
--export([get_spectrum/1, get_spectrum_with_id/1, get_spectrum_for_neuron_initialization/1, get_spectrum_path_for_neuron_initialization/1]).
--export([get_spectrum_id_for_neuron_initialization/0, get_spectra_table_id/0]).
+-export([get_spectrum/1, get_spectrum_id/0, get_spectrum_with_id/1, get_spectrum_for_neuron_initialization/1]).
+-export([get_spectrum_id_for_neuron_initialization/0]).
 -export([set_iteration/2, get_minimum_som_dimensions/1, get_number_of_spectra/1]).
 -export([get_state/1]).
 -export([reset_speclist_index/0, next_learning_step/0]).
--export([binary_spectra_files_to_ets/3]).
 %-export([update_iteration/1)].
 
 -record(spectrum_dispatcher_state, {
@@ -136,12 +135,12 @@ get_spectrum_for_neuron_initialization(Server_name) ->
 get_spectrum_id_for_neuron_initialization() ->
     gen_server:call({global, ?MODULE}, get_spectrum_id_for_neuron_initialization).
 
-get_spectrum_path_for_neuron_initialization(Server_name) ->
-    gen_server:call(Server_name, get_spectrum_path_for_neuron_initialization).
-
 get_spectrum_with_id(Server_name) ->
     gen_server:call(Server_name, get_spectrum_with_id).
-    
+
+get_spectrum_id() ->
+    gen_server:call({global, ?MODULE}, get_spectrum_id).
+
 get_minimum_som_dimensions(Server_name) ->
     gen_server:call(Server_name, get_minimum_som_dimensions).
 
@@ -150,9 +149,6 @@ get_number_of_spectra(Server_name) ->
 
 get_state(Server_name) ->
     gen_server:call(Server_name, get_state).
-
-get_spectra_table_id() ->
-    gen_server:call({global, ?MODULE}, get_spectra_table_id).
 
 set_iteration(Server_name, New_iteration) ->
     gen_server:call(Server_name, {set_iteration, New_iteration}).
@@ -167,9 +163,6 @@ handle_cast(stop, Spectrum_dispatcher_state) ->
     {stop, normal, Spectrum_dispatcher_state}.
 
 
-handle_call(get_spectra_table_id, _From, Spectrum_dispatcher_state) ->
-    {reply, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Spectrum_dispatcher_state};
-
 %returns list of lists: [Spectrum_id, Spectrum]
 handle_call(
     get_spectrum_with_id, _From, Spectrum_dispatcher_state) ->
@@ -177,7 +170,6 @@ handle_call(
         case File_format of 
             binary_spectra_in_ram ->
                 Key = hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                %[{_Key, Binary_spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
                 {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Key) end),
                 Reply = [Key, Spectrum#spectra.spectrum];
             binary ->
@@ -198,7 +190,21 @@ handle_call(
             }
         
         };
+
+%returns a spectrum_id for neuron_spectrum_compare
+handle_call(get_spectrum_id, _From, Spectrum_dispatcher_state) ->
+        {   reply, 
+            hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused), 
+            Spectrum_dispatcher_state#spectrum_dispatcher_state{
+                spectra_list_unused = tl(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
+                spectra_list_used = [
+                    hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) |
+                    Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_used
+                ]
+            }
         
+        };
+
 % returns a spectrum from the filesystem as long as spectra are left
 % returns [] if all spectra where delivered in the current Iterations step
 handle_call(
@@ -229,8 +235,7 @@ handle_call(
         false ->
             case File_format of
                 binary_spectra_in_ram ->
-                    Key = lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                    %[{_Key, Spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
+                    Spectrum_id = lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
                     {atomic, [Spectrum_record]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
                     Spectrum = Spectrum_record#spectra.spectrum;
                 binary ->
@@ -246,8 +251,7 @@ handle_call(
         true ->
             case File_format of
                 binary_spectra_in_ram ->
-                    Key = lists:nth(random:uniform(length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)),Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                    %[{_Key, Binary_spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
+                    Spectrum_id = lists:nth(random:uniform(length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)),Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
                     {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
                     Spectrum = 
                         term_to_binary(
@@ -292,31 +296,6 @@ handle_call(
             spectra_source = {filesystem, Directory, File_format, Spec_list_index +1}
         }
     };
-
-
-% returns a path of a spectrum for spectrum initialisation
-handle_call(
-    get_spectrum_path_for_neuron_initialization, _From, Spectrum_dispatcher_state) ->
-    {filesystem, Directory, File_format, Spec_list_index} = Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_source,
-    
-    %[{filesystem, Directory, File_format, Spectra_file_list, Spec_list_index}, Iteration, Max_iteration]) ->
-        case Spec_list_index > length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) of 
-            false ->
-                Reply = {forward,
-                    string:concat(Directory, lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused))
-                };
-            %% if all spectra are dispatched but neurons keep asking,
-            %% return random spectra paths from the list of same spectra
-            true ->
-                Reply = {reverse,
-                    string:concat(Directory, lists:nth(random:uniform(length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)), Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused))
-                }
-        end,
-        {reply, Reply, 
-            Spectrum_dispatcher_state#spectrum_dispatcher_state{
-                spectra_source = {filesystem, Directory, File_format, Spec_list_index +1}
-            }
-        };
 
 
 handle_call(
