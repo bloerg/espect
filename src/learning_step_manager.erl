@@ -12,7 +12,9 @@
     neurons_worker_list = [],
     learning_step = 1,
     iteration = 1,
-    max_iteration = 200
+    max_iteration = 200,
+    learning_step_start_timestamp = 0, % for statistics
+    learning_step_runtime_sum = 0 % for statistics
 }).
 
 %%Start an iteration state server
@@ -41,7 +43,7 @@ terminate(_Reason, _Neuron_state) ->
 
 init(_State) ->
     %~ gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
-    {ok, #learning_step_manager_state{}}.
+    {ok, #learning_step_manager_state{learning_step_start_timestamp = os:timestamp()}}.
 
 % Takes List like [{neuron_event_handler,{neuron,<0.91.0>}}, {neuron_event_handler,{neuron,<0.91.0>}},...]
 % as input and outputs a list conainting neurons worker pids
@@ -88,8 +90,15 @@ update_complete(From) ->
     gen_server:cast({global, ?MODULE}, {update_complete, From}).
 
 handle_cast(next_learning_step, State) ->
-    %~ erlang:display({"next learning step, bmu: ", bmu_manager:get_bmu({global, bmu_manager})}),
-    io:format("Starting learning step ~w~n", [State#learning_step_manager_state.learning_step +1]),
+    New_timestamp = os:timestamp(),
+    Time_diff = timer:now_diff(New_timestamp, State#learning_step_manager_state.learning_step_start_timestamp)/1000000,
+    io:format("Starting learning step ~w. Previous learning step took ~w seconds. Mean LS time is ~w~n", 
+        [
+         State#learning_step_manager_state.learning_step +1, 
+         Time_diff,
+         (State#learning_step_manager_state.learning_step_runtime_sum + Time_diff) / ((State#learning_step_manager_state.iteration * State#learning_step_manager_state.learning_step) +1)
+        ]
+    ),
     case spectrum_dispatcher:next_learning_step() of
         nospectraleft -> iteration_state_server:next_iteration();
         ok -> 
@@ -98,7 +107,13 @@ handle_cast(next_learning_step, State) ->
                 {compare, spectrum_dispatcher:get_spectrum_with_id({global, spectrum_dispatcher})}
             )
     end,
-    {noreply, State#learning_step_manager_state{learning_step = State#learning_step_manager_state.learning_step + 1}};
+    {noreply, 
+        State#learning_step_manager_state{
+            learning_step = State#learning_step_manager_state.learning_step + 1,
+            learning_step_start_timestamp = New_timestamp,
+            learning_step_runtime_sum = State#learning_step_manager_state.learning_step_runtime_sum + Time_diff
+        }
+    };
     
 % called when all neuron workers have compared a spectrum to all the neurons
 % sets the bmu in the neurons worker containing the BMU-neuron
