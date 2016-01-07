@@ -28,7 +28,9 @@
     neuron_indeces = [], %List of neuron index, i. e. the serial index starting at 0 and ending at X_max*Y_max
     som_dimensions = [], % maximum x and maximum y coordinate of the self organizing map
     iteration = 0, %iteration step
-    max_iteration = 200 %maximum number of iterations
+    max_iteration = 200, %maximum number of iterations
+    neuron_table_id = none, % an id of an ets table containing all the neurons
+    coordinate_table_id = none % contains the coordinates of the neurons for cross querying
 }).
 
 %%Start a neuron server
@@ -95,7 +97,12 @@ terminate(_Reason, _Neuron_state) ->
 init(State) ->
     gen_event:add_handler({global, neuron_event_manager}, {neuron_event_handler, {neuron, self()}}, [{pid, self()}]),
     gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
-    {ok, [[], State]}.
+    {ok, [
+        State#neuron_worker_state{
+            neuron_table_id = ets:new(neurons, [{keypos, #neuron.neuron_coordinates}]),
+            coordinate_table_id = ets:new(coordinates, [])
+        }]
+    }.
 
 
 load_spectrum_from_filesystem({Direction, Path}) ->
@@ -159,182 +166,238 @@ set_iteration(Server_name, New_iteration) ->
 map_dump(Server_name) ->
     gen_server:call(Server_name, map_dump).
 
-handle_cast(
-    {{async, BMU_manager}, {compare, Spectrum_with_id}}, 
-    [Neurons, Neuron_worker_state]) ->
-        %~ erlang:display({"comparing spectrum: ", Spectrum_with_id}),
-        [Spectrum_metadata, Spectrum] = Spectrum_with_id,
-        %% FIXME: I want this with tail recursion, not map
-        NewNeurons =
-            lists:map(fun(Neuron) ->
-                Neuron_vector_difference = vector_operations:vector_difference(binary_to_term(Neuron#neuron.neuron_vector), Spectrum),
-                Neuron#neuron{
-                    last_spectrum_neuron_vector_difference = Neuron_vector_difference
-                }
-            end,
-            Neurons
-            ),
-        [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] = 
-            lists:foldl(fun(Neuron, [Min_distance, Min_distance_neuron_coordinates]) ->
+
+
+%% @doc recursive function; run from spectra - neuron compare function
+%% compares a spectrum with all neurons and returns
+%% minimum spec-neuron distance and corresponding neuron coordinates
+compare_helper(
+    Neurons_table, 
+    Coordinate_table, 
+    Coordinates, 
+    Spectrum, 
+    [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates]
+) ->
+    case Coordinates of 
+        '$end_of_table' ->
+            [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates];
+        _Other ->
+            [Neuron] = ets:lookup(Neurons_table, Coordinates),
+            Neuron_vector_difference = vector_operations:vector_difference(binary_to_term(Neuron#neuron.neuron_vector), Spectrum),
+            ets:insert(Neurons_table, Neuron#neuron{
+                last_spectrum_neuron_vector_difference = Neuron_vector_difference
+            }),
+            compare_helper(
+                Neurons_table,
+                Coordinate_table,
+                ets:next(Coordinate_table, Coordinates),
+                Spectrum,
                 case binary_to_term(Neuron#neuron.bmu_to_spectrum_id) of
                     [-1, -1, -1] -> 
-                        Spectrum_vector_distance = vector_operations:vector_length(Neuron#neuron.last_spectrum_neuron_vector_difference),
-                        case Spectrum_vector_distance < Min_distance of
-                            true -> [Spectrum_vector_distance, Neuron#neuron.neuron_coordinates];
-                            false -> [Min_distance, Min_distance_neuron_coordinates]
+                        Spectrum_vector_distance = vector_operations:vector_length(Neuron_vector_difference),
+                        case Spectrum_vector_distance < Min_spectrum_neuron_distance of
+                            true -> 
+                                [Spectrum_vector_distance, Coordinates];
+                            false -> [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates]
                         end;
-                    _Else -> [Min_distance, Min_distance_neuron_coordinates]
+                    _Else -> [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates]
                 end
-            end,
-            [576460752303423487, []], NewNeurons),  %A large Number, every distance should be less than this number, taken from http://www.erlang.org/doc/efficiency_guide/advanced.html
+            )
+    end.
 
-        %~ erlang:display({"sending bmu candidate to bmu_manager: ", [Min_spectrum_neuron_distance_coordinates, 
-                 %~ Spectrum_metadata, 
-                 %~ Min_spectrum_neuron_distance
-            %~ ]}), 
+
+%% @doc recursive function; run from spectra - neuron compare function
+%% compares a spectrum with all neurons and returns
+%% minimum spec-neuron distance and corresponding neuron coordinates
+update_helper(
+    Neurons_table, 
+    Coordinate_table, 
+    Coordinates,
+    Neuron_worker_state,
+    BMU_neuron_coordinates
+) ->
+    case Coordinates of 
+        '$end_of_table' ->
+            ok;
+        _Other ->
+            [Neuron] = ets:lookup(Neurons_table, Coordinates),
+            ets:insert(Neurons_table, 
+                Neuron#neuron{ neuron_vector = 
+                    term_to_binary(
+                        vector_operations:vector_sum(
+                            binary_to_term(Neuron#neuron.neuron_vector),
+                            vector_operations:scalar_multiplication(
+                                neighbourhood_function1(
+                                    Neuron_worker_state#neuron_worker_state.iteration, 
+                                    Neuron_worker_state#neuron_worker_state.max_iteration, 
+                                    Neuron#neuron.neuron_coordinates, 
+                                    BMU_neuron_coordinates
+                                ),
+                                %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
+                                Neuron#neuron.last_spectrum_neuron_vector_difference
+                            )
+                        )
+                    )
+                }
+            ),
+            update_helper(
+                Neurons_table,
+                Coordinate_table,
+                ets:next(Coordinate_table, Coordinates),
+                Neuron_worker_state,
+                BMU_neuron_coordinates
+            )
+    end.
+
+handle_cast(
+    {{async, BMU_manager}, {compare, Spectrum_with_id}}, 
+    [Neuron_worker_state]) ->
+        [Spectrum_metadata, Spectrum] = Spectrum_with_id,
+        [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] =
+            compare_helper(
+                Neuron_worker_state#neuron_worker_state.neuron_table_id, 
+                Neuron_worker_state#neuron_worker_state.coordinate_table_id, 
+                ets:first(Neuron_worker_state#neuron_worker_state.coordinate_table_id), 
+                Spectrum, 
+                [576460752303423487, []]
+            ),
         bmu_manager:neuron_spectrum_distance(BMU_manager,
             [Min_spectrum_neuron_distance_coordinates, 
                  Spectrum_metadata, 
                  Min_spectrum_neuron_distance
             ]
         ),
-        {noreply, [NewNeurons, Neuron_worker_state]};
+        {noreply, [Neuron_worker_state]}; %%FIXME [#neuron{}] depricated
 
-handle_cast({update_neuron, BMU_neuron_coordinates}, [Neurons, Neuron_worker_state]) ->
-    %~ io:format("Updating neurons with: ~w~n", [{bmu_coordinates, BMU_neuron_coordinates, neuron_coordinate_range, Neuron_worker_state#neuron_worker_state.neuron_coordinate_range}]),
-    NewNeurons =
-        %% FIXME: I want this with tail recursion, not map
-        lists:map(fun(Neuron) ->
-                case length(binary_to_term(Neuron#neuron.neuron_vector)) of 
-                    0 -> Neuron;
-                    _Other ->
-                        Neuron#neuron{ neuron_vector = 
-                            term_to_binary(
-                                vector_operations:vector_sum(
-                                    binary_to_term(Neuron#neuron.neuron_vector),
-                                    vector_operations:scalar_multiplication(
-                                        neighbourhood_function1(
-                                            Neuron_worker_state#neuron_worker_state.iteration, 
-                                            Neuron_worker_state#neuron_worker_state.max_iteration, 
-                                            Neuron#neuron.neuron_coordinates, 
-                                            BMU_neuron_coordinates
-                                        ),
-                                        %vector_operations:vector_difference(BMU_spectrum, Neuron_vector)
-                                        Neuron#neuron.last_spectrum_neuron_vector_difference
-                                    )
-                                )
-                            )
-                        }
-                end
-        end,
-        Neurons
+handle_cast({update_neuron, BMU_neuron_coordinates}, [Neuron_worker_state]) ->
+        Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
+        Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
+        update_helper(
+            Neurons_table, 
+            Coordinate_table, 
+            ets:first(Neuron_worker_state#neuron_worker_state.coordinate_table_id),
+            Neuron_worker_state,
+            BMU_neuron_coordinates
         ),
     learning_step_manager:update_complete(self()),
-    {noreply, [NewNeurons, Neuron_worker_state]};
+    {noreply, [Neuron_worker_state]};
 
 handle_cast(stop, State) ->
     {stop, normal, State}.
 
 
-handle_call({set_neuron_indeces, Indeces}, _From, [Neurons, Neuron_worker_state]) ->
+handle_call({set_neuron_indeces, Indeces}, _From, [Neuron_worker_state]) ->
     {reply, ok, 
         [
-            Neurons,
             Neuron_worker_state#neuron_worker_state{neuron_indeces = Indeces}
         ]
     };
 
-handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_state]) ->
+handle_call(load_spectra_to_neurons_worker, _From, [Neuron_worker_state]) ->
     %~ [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
     Spectra_table = spectrum_dispatcher:get_spectra_table_id(),
-    Spectrum_id = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
+    Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
+    Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
+    lists:foreach(fun(Sequence_number)  ->
+            Spectrum_id = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
+            Neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number),
+            case Spectrum_id of 
+                {ok, Key} ->
+                    [{_Key, Spectrum}] = ets:lookup(Spectra_table, Key);
+                {reverse, Key} ->
+                    [{_Key, Forward_spectrum}] = ets:lookup(Spectra_table, Key),
+                    Spectrum = 
+                        term_to_binary(
+                            lists:reverse(
+                                binary_to_term(
+                                    Forward_spectrum
+                                )
+                            )
+                        )
+            end,
+            ets:insert(Neurons_table, #neuron{
+                neuron_coordinates = Neuron_coordinates, 
+                neuron_vector = Spectrum
+                }
+            ),
+            ets:insert(Coordinate_table, {Neuron_coordinates, Sequence_number})
+        end,
+        Neuron_worker_state#neuron_worker_state.neuron_indeces
+    ),
     {reply, ok, [
-            [ 
-            #neuron {
-                    %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
-                    
-                    %~ %% get Spectrum from spectrum_dispatcher, return is binary
-                    %~ neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
-                    %~ neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
-                    neuron_vector =
-                        case Spectrum_id of 
-                            {ok, Key} ->
-                                [{_Key, Spectrum}] = ets:lookup(Spectra_table, Key),
-                                Spectrum;
-                            {reverse, Key} ->
-                                [{_Key, Forward_spectrum}] = ets:lookup(Spectra_table, Key),
-                                Spectrum = 
-                                    term_to_binary(
-                                        lists:reverse(
-                                            binary_to_term(
-                                                Forward_spectrum
-                                            )
-                                        )
-                                    ),
-                                Spectrum
-                        end,
- 
-                    
-                    %% get Spectrum path form spectrum_dispatcher and load spectrum from filesystem
-                    %~ neuron_vector = load_spectrum_from_filesystem(
-                        %~ spectrum_dispatcher:get_spectrum_path_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher)
-                    %~ ),
-                    neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)
-                } || Sequence_number <- Neuron_worker_state#neuron_worker_state.neuron_indeces 
-            ],
             Neuron_worker_state
         ]
     };
 
-handle_call({add_neuron, List_of_neurons}, _From, [Neurons, Neuron_worker_state]) ->
-    {reply, ok, [Neurons ++ List_of_neurons, Neuron_worker_state]};
+handle_call({add_neurons, List_of_neurons}, _From, [Neuron_worker_state]) ->
+    Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
+    Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
+    lists:foreach(fun(Neuron) ->
+        ets:insert(Neurons_table, Neuron),
+        ets:insert(Coordinate_table, {Neuron#neuron.neuron_coordinates, 1})
+    end, 
+    List_of_neurons),
+    
+    New_neurons = [],
+    {reply, ok, [New_neurons, Neuron_worker_state]};
 
-handle_call({remove_neuron, Number}, _From, [Neurons, Neuron_worker_state]) ->
-    {Reply, New_neurons} = lists:split(min(length(Neurons), Number), Neurons),
-    {reply, Reply, [New_neurons, Neuron_worker_state]};
+handle_call({remove_neurons, Number}, _From, [Neuron_worker_state]) ->
+    Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
+    Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
+    Reply =
+        lists:map(fun(_Counter) ->
+            Coordinates = ets:first(Coordinate_table),
+            ets:delete(Coordinate_table, Coordinates),
+            [Neuron] = ets:lookup(Neurons_table, Coordinates),
+            ets:delete(Neurons_table, Coordinates),
+            Neuron
+          end, 
+          lists:seq(1,Number)
+        ),
+    {reply, Reply, [Neuron_worker_state]};
 
 handle_call(
-    {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, _From, [Neurons, Neuron_worker_state]) ->
+    {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, _From, [Neuron_worker_state]) ->
+        Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
+        [Neuron] = ets:lookup(Neurons_table, BMU_neuron_coordinates),
+        ets:insert(Neurons_table, Neuron#neuron{bmu_to_spectrum_id = term_to_binary(BMU_spectrum_id) }),
         {reply, ok, [
-            lists:map(fun(Neuron) ->
-                    case Neuron#neuron.neuron_coordinates of
-                        BMU_neuron_coordinates -> 
-                            Neuron#neuron{bmu_to_spectrum_id = term_to_binary(BMU_spectrum_id) };
-                        _Other -> 
-                            Neuron
-                    end
-                end,
-            Neurons
-            ), 
             Neuron_worker_state
         ]};
 
-handle_call(map_dump, _From, [Neurons, Neuron_worker_state]) ->
+handle_call(map_dump, _From, [Neuron_worker_state]) ->
+        Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
     {
         reply,
         term_to_binary(
-            [
-                [Neuron#neuron.neuron_coordinates, 
-                 binary_to_term(Neuron#neuron.bmu_to_spectrum_id)
-                ] 
-            || Neuron <- Neurons]
+            lists:map(fun(Neuron) ->
+                [
+                    Neuron#neuron.neuron_coordinates, 
+                    binary_to_term(Neuron#neuron.bmu_to_spectrum_id)
+                ]
+            end,
+            ets:tab2list(Neurons_table)) %% Fixme make this faster with recursion!
         ),
-        [Neurons, Neuron_worker_state]
+        [Neuron_worker_state]
     };
 
-handle_call({set_iteration, New_iteration}, _From, [Neurons, Neuron_worker_state]) ->
-    {reply, ok, [
-        
+handle_call({set_iteration, New_iteration}, _From, [Neuron_worker_state]) ->
+        Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
         lists:map(
             fun(Neuron) ->
-                Neuron#neuron{
-                    bmu_to_spectrum_id = term_to_binary([-1,-1,-1]),
-                    last_spectrum_neuron_vector_difference = []
-                }
+                ets:insert(Neurons_table, 
+                    Neuron#neuron{
+                        bmu_to_spectrum_id = term_to_binary([-1,-1,-1]),
+                        last_spectrum_neuron_vector_difference = []
+                    }
+                )
             end,
-        Neurons), 
-        Neuron_worker_state#neuron_worker_state{iteration = New_iteration}]}.
+            ets:tab2list(Neurons_table)  %% Fixme make this faster with recursion!
+        ),
+    {reply, ok, [
+        Neuron_worker_state#neuron_worker_state{iteration = New_iteration}
+    ]}.
 
 
 handle_info(Message, State) ->
