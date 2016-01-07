@@ -247,13 +247,34 @@ handle_call({set_neuron_indeces, Indeces}, _From, [Neurons, Neuron_worker_state]
 handle_call(load_spectra_to_neurons_worker, _From, [_Neurons, Neuron_worker_state]) ->
     %~ [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
+    Spectra_table = spectrum_dispatcher:get_spectra_table_id(),
+    Spectrum_id = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
     {reply, ok, [
             [ 
             #neuron {
                     %~ neuron_vector = binary_to_term(spectrum_dispatcher:get_spectrum(State#neuron_worker_state.spectrum_dispatcher)),
                     
                     %~ %% get Spectrum from spectrum_dispatcher, return is binary
-                    neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
+                    %~ neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
+                    %~ neuron_vector = spectrum_dispatcher:get_spectrum_for_neuron_initialization(Neuron_worker_state#neuron_worker_state.spectrum_dispatcher),
+                    neuron_vector =
+                        case Spectrum_id of 
+                            {ok, Key} ->
+                                [{_Key, Spectrum}] = ets:lookup(Spectra_table, Key),
+                                Spectrum;
+                            {reverse, Key} ->
+                                [{_Key, Forward_spectrum}] = ets:lookup(Spectra_table, Key),
+                                Spectrum = 
+                                    term_to_binary(
+                                        lists:reverse(
+                                            binary_to_term(
+                                                Forward_spectrum
+                                            )
+                                        )
+                                    ),
+                                Spectrum
+                        end,
+ 
                     
                     %% get Spectrum path form spectrum_dispatcher and load spectrum from filesystem
                     %~ neuron_vector = load_spectrum_from_filesystem(
