@@ -296,26 +296,30 @@ handle_call({set_neuron_indeces, Indeces}, _From, [Neuron_worker_state]) ->
 handle_call(load_spectra_to_neurons_worker, _From, [Neuron_worker_state]) ->
     %~ [First_neuron, Last_neuron] = Neuron_worker_state#neuron_worker_state.neuron_coordinate_range,
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
-    Spectra_table = spectrum_dispatcher:get_spectra_table_id(),
+    %~ Spectra_table = spectrum_dispatcher:get_spectra_table_id(),
     Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
     Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
     lists:foreach(fun(Sequence_number)  ->
-            Spectrum_id = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
+            %~ Spectrum_id = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
             Neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number),
-            case Spectrum_id of 
-                {ok, Key} ->
-                    [{_Key, Spectrum}] = ets:lookup(Spectra_table, Key);
-                {reverse, Key} ->
-                    [{_Key, Forward_spectrum}] = ets:lookup(Spectra_table, Key),
-                    Spectrum = 
-                        term_to_binary(
-                            lists:reverse(
-                                binary_to_term(
-                                    Forward_spectrum
-                                )
-                            )
-                        )
-            end,
+            %~ case Spectrum_id of 
+                %~ {ok, Key} ->
+                    %~ [{_Key, Spectrum}] = ets:lookup(Spectra_table, Key);
+                %~ {reverse, Key} ->
+                    %~ [{_Key, Forward_spectrum}] = ets:lookup(Spectra_table, Key),
+                    %~ Spectrum = 
+                        %~ term_to_binary(
+                            %~ lists:reverse(
+                                %~ binary_to_term(
+                                    %~ Forward_spectrum
+                                %~ )
+                            %~ )
+                        %~ );
+                %~ Other -> 
+                    %~ Spectrum = [],
+                    %~ {error, Other}
+            %~ end,
+            Spectrum = spectrum_dispatcher:get_spectrum_for_neuron_initialization({global, spectrum_dispatcher}),
             ets:insert(Neurons_table, #neuron{
                 neuron_coordinates = Neuron_coordinates, 
                 neuron_vector = Spectrum
