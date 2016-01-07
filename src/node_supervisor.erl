@@ -13,6 +13,7 @@ start_link() ->
     ).
 
 init(_Args) ->
+    application:start(mnesia),
     Supervisor_specification = {
         one_for_one,
         10,
