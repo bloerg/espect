@@ -127,7 +127,7 @@ get_spectrum_for_neuron_initialization(Server_name) ->
     gen_server:call(Server_name, get_spectrum_for_neuron_initialization).
 
 get_spectrum_id_for_neuron_initialization() ->
-    gen_server:call({global, ?MODULE}, get_spectrum_for_neuron_initialization).
+    gen_server:call({global, ?MODULE}, get_spectrum_id_for_neuron_initialization).
 
 get_spectrum_path_for_neuron_initialization(Server_name) ->
     gen_server:call(Server_name, get_spectrum_path_for_neuron_initialization).
@@ -161,7 +161,7 @@ handle_cast(stop, Spectrum_dispatcher_state) ->
 
 
 handle_call(get_spectra_table_id, _From, Spectrum_dispatcher_state) ->
-    {ok, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Spectrum_dispatcher_state};
+    {reply, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Spectrum_dispatcher_state};
 
 %returns list of lists: [Spectrum_id, Spectrum]
 handle_call(
