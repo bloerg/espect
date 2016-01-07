@@ -104,7 +104,7 @@ handle_cast(next_learning_step, State) ->
         ok -> 
             ok = bmu_manager:next_learning_step(),
             ok = neuron_event_handler:trigger_neuron_compare(
-                {compare, spectrum_dispatcher:get_spectrum_with_id({global, spectrum_dispatcher})}
+                {compare, spectrum_dispatcher:get_spectrum_id()}
             )
     end,
     {noreply, 
