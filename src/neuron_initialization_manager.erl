@@ -75,7 +75,7 @@ initialize_neurons() ->
     gen_server:call({global, ?MODULE}, initialize_neurons).
 
 neuron_initialized() ->
-    gen_server:cast({global, ?MODULE}, neuron_initialized).
+    gen_server:call({global, ?MODULE}, neuron_initialized).
     
 
 handle_call(initialize_neurons, _From, State) ->
@@ -102,7 +102,6 @@ handle_call(neuron_initialized, From, State) ->
                 [timer:now_diff(State#neuron_init_manager_state.start_time_stamp, os:timestamp())/1000000]),
             ok;
         _Other_number -> 
-            io:format("Loading spectra to Neurons. ~w neuron workers left.~n", [length(Neurons_worker_list_new)]),
             ok
     end,
     {reply, ok, State#neuron_init_manager_state{ neurons_worker_list = Neurons_worker_list_new}}.
