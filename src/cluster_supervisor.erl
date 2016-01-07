@@ -158,7 +158,8 @@ init(Cluster_cookie) ->
             Spectrum_dispatcher_spec,
             Neuron_event_manager_spec,
             BMU_manager_spec,
-            SOM_manager_spec
+            SOM_manager_spec,
+            Neuron_init_manager_spec
         ],
     {ok, 
         {
