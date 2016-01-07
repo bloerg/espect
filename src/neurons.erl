@@ -16,9 +16,15 @@
 %for testing, remove later
 -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
 
+-record(spectra, {
+    spectrum_id = [-1,-1,-1], %the neuron is BMU to spectrum with id
+    spectrum = term_to_binary([]) %the vector representing the spectrum occupied by the neuron
+}).
+
+
 -record(neuron, {
-    neuron_vector = term_to_binary([]), %the vector representing the spectrum occupied by the neuron
     neuron_coordinates = [], %the coordinates of the neuron in the som
+    neuron_vector = term_to_binary([]), %the vector representing the spectrum occupied by the neuron
     bmu_to_spectrum_id = term_to_binary([-1,-1,-1]), %the neuron is BMU to spectrum with id
     last_spectrum_neuron_vector_difference = [] %the vector difference computed in the compare process, used later for the update computation
 }).
@@ -301,16 +307,23 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neuron_worker_state]) ->
     learning_step_manager:update_complete(self()),
     {noreply, [Neuron_worker_state]};
 
+
 handle_cast(load_spectra_to_neurons_worker, [Neuron_worker_state]) ->
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
     Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
     Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
     lists:foreach(fun(Sequence_number)  ->
             Neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number),
-            Spectrum = spectrum_dispatcher:get_spectrum_for_neuron_initialization({global, spectrum_dispatcher}),
+            {Direction, Spectrum_id} = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
+            {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
+            
             ets:insert(Neurons_table, #neuron{
                 neuron_coordinates = Neuron_coordinates, 
-                neuron_vector = Spectrum
+                neuron_vector = 
+                    case Direction of 
+                        forward -> Spectrum#spectra.spectrum;
+                        reverse -> term_to_binary(lists:reverse(binary_to_term(Spectrum#spectra.spectrum)))
+                    end
                 }
             ),
             ets:insert(Coordinate_table, {Neuron_coordinates, Sequence_number})
