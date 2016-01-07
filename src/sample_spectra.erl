@@ -9,6 +9,28 @@
 %% The Spectra can be generated in bulk and written to files (one spectrum each) in a provided directory for later use.
 
 
+make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, single_binary_file)
+    when 
+        is_integer(MaxX),
+        is_integer(MaxY),
+        is_integer(SpectrumLength),
+        is_list(BaseDirectory),
+        MaxX == MaxY,
+        SpectrumLength > 0
+    ->
+        Output_file=string:join([BaseDirectory, "/all_specs.bin"], ""),
+        lists:foreach(fun([X,Y]) ->
+            Data = term_to_binary([[Y*MaxX + X, X+Y, X], make_sine_spectrum(SpectrumLength)]),
+            Output_binary = <<Data/binary,$\n>>,
+            file:write_file(Output_file, Output_binary, [append])
+        end,
+        [ [X,Y]
+              || X <- lists:seq(0,MaxX), Y <- lists:seq(0, MaxY)
+            ]
+        )
+    ;
+        
+
 make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_format) 
     when 
         is_integer(MaxX),
