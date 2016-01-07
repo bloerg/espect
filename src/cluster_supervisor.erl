@@ -102,7 +102,7 @@ init(Cluster_cookie) ->
     {ok, Spectra_directory} = application:get_env(spectra_directory),
     Spectrum_dispatcher_spec = {
         spectrum_dispatcher, 
-        {spectrum_dispatcher, start_link, [{global, spectrum_dispatcher}, {filesystem, Spectra_directory, binary, 1}, Iteration, Max_iteration]},
+        {spectrum_dispatcher, start_link, [{global, spectrum_dispatcher}, {filesystem, Spectra_directory, binary_spectra_in_ram, 1}, Iteration, Max_iteration]},
         temporary,
         10000,
         worker,
