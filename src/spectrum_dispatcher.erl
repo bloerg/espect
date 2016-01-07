@@ -19,10 +19,13 @@
     iteration = 0, %iteration step
     max_iteration = 200, %maximum number of iterations
     spectra_list_unused = [], % Contains spectra filenames, when delivering a spectrum to a neuron the filename is removed and put into spectra_list_used
-    spectra_list_used = [], % This list contains the spectra file names already delivered to neurons in an iteration step. Its content will be copied back to spectra_list_unused upon iteration step update
-    spectra_table = [] %contains the Handle to the spectra ets table
+    spectra_list_used = [] % This list contains the spectra file names already delivered to neurons in an iteration step. Its content will be copied back to spectra_list_unused upon iteration step update
 }).
 
+-record(spectra, {
+    spectrum_id = term_to_binary([-1,-1,-1]), %the neuron is BMU to spectrum with id
+    spectrum = term_to_binary([]) %the vector representing the spectrum occupied by the neuron
+}).
 
 % @doc Example start: spectrum_dispatcher:start({local, spectrum_dispatcher},{random_sine, 256}, 0, 200).
 %                     spectrum_dispatcher:start({local, spectrum_dispatcher}, {filesystem, "/var/tmp/sine/", binary, 1}, 0, 200).
@@ -51,37 +54,42 @@ terminate(_Reason, _Spectrum_dispatcher_state) ->
     .
 
 
-
 %% @doc Helper function, reads spectra from binary files and writes
-%% {Spec_id, term_to_binary(Spectrum)} to ets-table
-binary_spectra_files_to_ets(Spectra_table, Directory, File_format) ->
-    binary_spectra_files_to_ets(Spectra_table, spectrum_handling:provide_spectra_list(filesystem, Directory), Directory, File_format, []).
-binary_spectra_files_to_ets(_Spectra_table, [], _Directory, _File_format, Key_list) ->
-    {ok, Key_list};
-binary_spectra_files_to_ets(Spectra_table, Spectra_list, Directory, File_format, Key_list) ->
+%% {Spec_id, term_to_binary(Spectrum)} to mnesia-table
+binary_spectra_files_to_mnesia(Directory, File_format) ->
+    binary_spectra_files_to_mnesia(spectrum_handling:provide_spectra_list(filesystem, Directory), Directory, File_format).
+binary_spectra_files_to_mnesia([], _Directory, _File_format) ->
+    ok;
+binary_spectra_files_to_mnesia(Spectra_list, Directory, File_format) ->
     [Spectrum_id, Spectrum] = spectrum_handling:read_spectrum_from(
         filesystem, 
         string:concat(Directory, hd(Spectra_list)), 
         binary
     ),
-    ets:insert(Spectra_table, {Spectrum_id, term_to_binary(Spectrum)}),
-    binary_spectra_files_to_ets(
-        Spectra_table,
+    case mnesia:transaction(fun() -> mnesia:write(spectra, #spectra{
+        spectrum_id = Spectrum_id, 
+        spectrum = term_to_binary(Spectrum)
+    }, write) end)
+    of
+        {atomic, ok} -> ok;
+        {aborted, Reason} ->
+            io:format("Write to mnesia spectra table failed. Error: ~w~n", [{aborted, Reason}])
+    end,
+    %~ io:format("mnesia: ~w~n",[{Return_status, Result}]),
+    binary_spectra_files_to_mnesia(
         tl(Spectra_list),
         Directory,
-        File_format,
-        [Spectrum_id|Key_list]
+        File_format
     ).
-
 
 init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteration])
     when Start_index > 0 ->
+    mnesia:create_table(spectra, [{ram_copies, [node()|nodes()]}, {attributes, record_info(fields, spectra)}]),
     gen_event:add_handler({global, iteration_event_manager}, {iteration_event_handler, self()}, [{pid, self()}, {module, ?MODULE}]),
     case File_format of
         binary_spectra_in_ram ->
-            Spectra_table = ets:new(spectra, []),
-            
-            {ok, Key_list} = binary_spectra_files_to_ets(Spectra_table, Directory, File_format),
+            ok = binary_spectra_files_to_mnesia(Directory, File_format),
+            {atomic, Key_list} = mnesia:transaction(fun() -> mnesia:all_keys(spectra) end),
             State = #spectrum_dispatcher_state{
                 spectra_source = { 
                   filesystem, 
@@ -89,7 +97,6 @@ init([{filesystem, Directory, File_format, Start_index}, Iteration, Max_iteratio
                   File_format,
                   Start_index
                 },
-                spectra_table = Spectra_table,
                 iteration = Iteration,
                 max_iteration = Max_iteration,
                 spectra_list_unused = Key_list
@@ -170,8 +177,9 @@ handle_call(
         case File_format of 
             binary_spectra_in_ram ->
                 Key = hd(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                [{_Key, Binary_spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
-                Reply = [Key, binary_to_term(Binary_spectrum)];
+                %[{_Key, Binary_spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
+                {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Key) end),
+                Reply = [Key, Spectrum#spectra.spectrum];
             binary ->
                 Reply = spectrum_handling:read_spectrum_from(
                             filesystem, 
@@ -222,7 +230,9 @@ handle_call(
             case File_format of
                 binary_spectra_in_ram ->
                     Key = lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                    [{_Key, Spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key);
+                    %[{_Key, Spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
+                    {atomic, [Spectrum_record]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
+                    Spectrum = Spectrum_record#spectra.spectrum;
                 binary ->
                     [_Spectrum_id, Plain_spectrum] = spectrum_handling:read_spectrum_from(
                         filesystem, 
@@ -237,12 +247,13 @@ handle_call(
             case File_format of
                 binary_spectra_in_ram ->
                     Key = lists:nth(random:uniform(length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused)),Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-                    [{_Key, Binary_spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
+                    %[{_Key, Binary_spectrum}] = ets:lookup(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_table, Key),
+                    {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
                     Spectrum = 
                         term_to_binary(
                             lists:reverse(
                                 binary_to_term(
-                                    Binary_spectrum
+                                    Spectrum#spectra.spectrum
                                 )
                             )
                         );
@@ -269,7 +280,7 @@ handle_call(
     case Spec_list_index > length(Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused) of 
         false ->
             Key = lists:nth(Spec_list_index, Spectrum_dispatcher_state#spectrum_dispatcher_state.spectra_list_unused),
-            Reply = {ok, Key};
+            Reply = {forward, Key};
         %% if all spectra are dispatched but neurons keep asking,
         %% return random spectras from the list of same spectra, but reversed
         true ->
