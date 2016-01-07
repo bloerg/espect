@@ -261,9 +261,11 @@ update_helper(
     end.
 
 handle_cast(
-    {{async, BMU_manager}, {compare, Spectrum_with_id}}, 
+    {{async, BMU_manager}, {compare, Spectrum_id}}, 
     [Neuron_worker_state]) ->
-        [Spectrum_metadata, Spectrum] = Spectrum_with_id,
+        {atomic, [Spectrum_with_id]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
+        Spectrum_metadata = Spectrum_with_id#spectra.spectrum_id,
+        Spectrum = binary_to_term(Spectrum_with_id#spectra.spectrum),
         %~ T1= os:timestamp(),
         [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates] =
             compare_helper(
@@ -281,7 +283,7 @@ handle_cast(
             ]
         ),
         %~ io:format("Compare time: ~w~n", [timer:now_diff(os:timestamp(), T1)/1000000]),
-        {noreply, [Neuron_worker_state]}; %%FIXME [#neuron{}] depricated
+        {noreply, [Neuron_worker_state]}; 
 
 handle_cast({update_neuron, BMU_neuron_coordinates}, [Neuron_worker_state]) ->
         %~ T1 = os:timestamp(),
