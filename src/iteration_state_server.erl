@@ -39,7 +39,7 @@ get_iteration() ->
     gen_server:call({global, ?MODULE}, get_iteration).
 
 next_iteration() ->
-    gen_server:call({global, ?MODULE}, next_iteration).
+    gen_server:call({global, ?MODULE}, next_iteration, 60*1000).
 
 handle_call(get_iteration, _From, [Iteration, Max_iteration, Learning_step_begin_timestamp]) ->
     {reply, Iteration, [Iteration, Max_iteration, Learning_step_begin_timestamp]};
