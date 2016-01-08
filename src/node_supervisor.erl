@@ -27,6 +27,7 @@ join_espect_cluster(Primary_node, Cluster_cookie) ->
     case net_adm:ping(Primary_node) of
         pang -> io:format("Could not connect to cluster.", []);
         pong ->
+            mnesia:change_config(extra_db_nodes, [Primary_node]),
             supervisor:start_child(node_supervisor,
                 {
                     neuron_supervisor,
