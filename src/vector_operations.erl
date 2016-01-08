@@ -1,5 +1,5 @@
 -module(vector_operations).
--export([vector_distance_squared/3, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2]).
+-export([vector_distance_squared/2, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2, reverse_vector/1]).
 -export([vector_generate/2]).
 -export([vector_length_squared/1]).
 
@@ -9,64 +9,52 @@
 %% The module provides operations on simple n-dimensional cartesian vectors.
 
 
+vector_distance_squared(Vector1, Vector2) -> 
+    vector_distance_squared(Vector1, Vector2, 0).
+vector_distance_squared([], [], Result) ->
+    Result;
+vector_distance_squared([First_v1|Rest_v1], [First_v2|Rest_v2], Intermediate_result) ->
+    C = First_v1 - First_v2,
+    vector_distance_squared(Rest_v1, Rest_v2, Intermediate_result + (C*C)).
 
-%% The next two lines stop calculation if the two vectors don't have equal dimensions
-vector_distance_squared([],[_|_],_) -> error_first_vector_too_short;
-vector_distance_squared([_|_],[],_) -> error_second_vector_too_short;
-vector_distance_squared([],[],[]) -> error_two_empty_vectors_given;
-%% Actual computation
-vector_distance_squared([],[],Vector_distance_squared_sum) -> Vector_distance_squared_sum;
-vector_distance_squared([Vector1_first_component| Vector1_rest], [Vector2_first_component| Vector2_rest], []) -> 
-    vector_distance_squared(Vector1_rest, Vector2_rest, math:pow(Vector1_first_component - Vector2_first_component, 2));
-vector_distance_squared([Vector1_first_component| Vector1_rest], [Vector2_first_component| Vector2_rest], Intermediate_result) -> 
-    vector_distance_squared(Vector1_rest, Vector2_rest, math:pow(Vector1_first_component - Vector2_first_component, 2) + Intermediate_result).
+
+vector_distance(Vector1, Vector2) when
+    length(Vector1) == length(Vector2) -> 
+        math:sqrt(vector_distance_squared(Vector1, Vector2)).    
     
 
-vector_distance([],[]) -> error_two_empty_vectors_given; 
-vector_distance(Vector1, Vector2) when is_list(Vector1), is_list(Vector2) -> 
-    if 
-        length(Vector1) == length(Vector2) -> math:sqrt(vector_distance_squared(Vector1, Vector2, []));
-        length(Vector1) < length(Vector2) -> error_first_vector_too_short;
-        length(Vector1) > length(Vector2) -> error_second_vector_too_short
-    end.
-    
-    
-
-vector_difference([],[_|_],_) -> error_first_vector_too_short;
-vector_difference([_|_],[],_) -> error_second_vector_too_short; 
-vector_difference([],[],[]) -> error_two_empty_vectors_given;
-vector_difference([Vector1_first_component|Vector1_rest], [Vector2_first_component|Vector2_rest], []) ->
-    vector_difference(Vector1_rest, Vector2_rest, [Vector2_first_component - Vector1_first_component]);
-vector_difference([Vector1_first_component|Vector1_rest], [Vector2_first_component|Vector2_rest], Intermediate_vector) 
-    when is_list(Intermediate_vector) ->
-        vector_difference(Vector1_rest, Vector2_rest, [Vector2_first_component - Vector1_first_component| Intermediate_vector]);
-vector_difference([],[], Intermediate_vector) when is_list(Intermediate_vector) ->
-    lists:reverse(Intermediate_vector).
-
-%Wrapper function
-vector_difference(Vector1, Vector2) 
-    when 
-        is_list(Vector1), 
-        is_list(Vector2), 
-        length(Vector1) == length(Vector2) 
-    ->
+vector_difference(Vector1, Vector2) when
+    length(Vector1) == length(Vector2) ->
         vector_difference(Vector1, Vector2, []).
+vector_difference([],[], Result) ->
+    reverse_vector(Result);
+vector_difference([First_v1|Rest_v1], [First_v2|Rest_v2], Intermediate_result) ->
+    vector_difference(Rest_v1, Rest_v2, [First_v1 - First_v2|Intermediate_result]).
 
-vector_sum([],[],[]) -> [];
-vector_sum([Vector1_first_component|Vector1_rest], [Vector2_first_component|Vector2_rest], []) ->
-    vector_sum(Vector1_rest, Vector2_rest, [Vector2_first_component + Vector1_first_component]);
-vector_sum([Vector1_first_component|Vector1_rest], [Vector2_first_component|Vector2_rest], Intermediate_vector) 
-    when is_list(Intermediate_vector) ->
-        vector_sum(Vector1_rest, Vector2_rest, [Vector2_first_component + Vector1_first_component| Intermediate_vector]);
-vector_sum([],[], Intermediate_vector) when is_list(Intermediate_vector) ->
-    lists:reverse(Intermediate_vector).
-%wrapper function
-vector_sum(Vector1, Vector2) when is_list(Vector1), is_list(Vector2) ->
-    vector_sum(Vector1, Vector2, []).
+vector_sum(Vector1, Vector2) when
+    length(Vector1) == length(Vector2) ->
+        vector_sum(Vector1, Vector2, []).
+vector_sum([],[], Result) ->
+    reverse_vector(Result);
+vector_sum([First_v1|Rest_v1], [First_v2|Rest_v2], Intermediate_result) ->
+    vector_sum(Rest_v1, Rest_v2, [First_v1 + First_v2|Intermediate_result]).
 
-scalar_multiplication(Scalar, Vector) when is_float(Scalar) or is_integer(Scalar), is_list(Vector) ->
-    lists:map(fun(Element) -> Element*Scalar end, Vector).
 
+reverse_vector(Vector) ->
+    reverse_vector(Vector, []).
+reverse_vector([], Reversed_vector) ->
+    Reversed_vector;
+reverse_vector([Head|Tail], Out) ->
+    reverse_vector(Tail, [Head |Out]).
+
+scalar_multiplication(Scalar, Input_vector) ->
+    scalar_multiplication(Scalar, Input_vector, []).
+scalar_multiplication(_, [], Output_vector) ->
+    reverse_vector(Output_vector);
+scalar_multiplication(Scalar, [First_element|Rest], Output_vector) ->
+    scalar_multiplication(Scalar, Rest, [First_element*Scalar|Output_vector]).
+
+   
 %this is fast
 vector_length_squared(Vector) ->
     vector_length_squared(Vector, 0).
