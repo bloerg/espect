@@ -308,11 +308,22 @@ handle_cast(load_spectra_to_neurons_worker, [Neuron_worker_state]) ->
     [X_max, _Y_max] = Neuron_worker_state#neuron_worker_state.som_dimensions,
     Neurons_table = Neuron_worker_state#neuron_worker_state.neuron_table_id,
     Coordinate_table = Neuron_worker_state#neuron_worker_state.coordinate_table_id,
-    lists:foreach(fun(Sequence_number)  ->
-            Neuron_coordinates = neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number),
-            {Direction, Spectrum_id} = spectrum_dispatcher:get_spectrum_id_for_neuron_initialization(),
-            {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Spectrum_id) end),
-            
+    {atomic, Spectra_table_keys} = mnesia:transaction(fun() -> mnesia:all_keys(spectra) end),
+    Spectra_key_list = [
+        case Sequence_number +1 > length(Spectra_table_keys) of
+            true -> 
+                Nth = Sequence_number +1 - length(Spectra_table_keys),
+                Key = lists:nth(Nth, Spectra_table_keys),
+                {reverse, Key, neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)};
+            false -> 
+                Nth = Sequence_number +1,
+                Key = lists:nth(Nth, Spectra_table_keys),
+                {forward, Key, neuron_supervisor:get_x_y_from_sequence(X_max, Sequence_number)}
+        end
+    || Sequence_number <- Neuron_worker_state#neuron_worker_state.neuron_indeces
+    ],
+    lists:foreach(fun({Direction, Key, Neuron_coordinates})  ->
+            {atomic, [Spectrum]} = mnesia:transaction(fun() -> mnesia:read(spectra, Key) end),
             ets:insert(Neurons_table, #neuron{
                 neuron_coordinates = Neuron_coordinates, 
                 neuron_vector = 
@@ -322,9 +333,9 @@ handle_cast(load_spectra_to_neurons_worker, [Neuron_worker_state]) ->
                     end
                 }
             ),
-            ets:insert(Coordinate_table, {Neuron_coordinates, Sequence_number})
+            ets:insert(Coordinate_table, {Neuron_coordinates, 1})
         end,
-        Neuron_worker_state#neuron_worker_state.neuron_indeces
+        Spectra_key_list
     ),
     neuron_initialization_manager:neuron_initialized(),
     {noreply,  [
