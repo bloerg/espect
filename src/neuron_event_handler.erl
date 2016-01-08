@@ -31,10 +31,6 @@ handle_event({compare, Spectrum_id}, [{pid, Pid}]) ->
     neurons:get_neuron_spectrum_distance(Pid, Spectrum_id),
     {ok, [{pid, Pid}]};
     
-handle_event({compare_async, Spectrum_with_id}, [{pid, Pid}]) ->
-    neurons:get_neuron_spectrum_distance({async, {global, bmu_manager}}, Pid, Spectrum_with_id),
-    {ok, [{pid, Pid}]};
-    
 handle_event({update, BMU_neuron_coordinates}, [{pid, Pid}]) ->
     neurons:update_neuron(async, Pid, BMU_neuron_coordinates),
     {ok, [{pid, Pid}]}.
@@ -58,7 +54,7 @@ trigger_neuron_compare({compare, Spectrum_id}) ->
     %gen_event:sync_notify(neuron_event_manager, {compare, Spectrum, Spectrum_metadata}).
     %erlang:write(gen_event:which_handlers({global, neuron_event_manager})),
     bmu_manager:set_neurons_worker_list({global, bmu_manager}, gen_event:which_handlers({global, neuron_event_manager})),
-    gen_event:notify({global, neuron_event_manager}, {compare_async, Spectrum_id}).
+    gen_event:notify({global, neuron_event_manager}, {compare, Spectrum_id}).
 
 trigger_neuron_update({update, BMU_neuron_coordinates}) ->
     gen_event:notify({global, neuron_event_manager}, {update, BMU_neuron_coordinates}).
