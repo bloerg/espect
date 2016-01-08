@@ -90,16 +90,16 @@ handle_call(initialize_neurons, _From, State) ->
 handle_call(neuron_initialized, From, State) ->
     % remove the pid of the sending neurons worker from the list of
     % registered workers. This is to keep track of the responses of the neuron workers
-    {_, From_pid} = From, 
+    {From_pid, _} = From, 
     Neurons_worker_list_new = remove_pid_from_list(
         State#neuron_init_manager_state.neurons_worker_list,
         From_pid
     ),
-    
+   
     case length(Neurons_worker_list_new) of
         0 ->
             io:format("Loading spectra to Neurons took ~w seconds.~n", 
-                [timer:now_diff(State#neuron_init_manager_state.start_time_stamp, os:timestamp())/1000000]),
+                [timer:now_diff(os:timestamp(), State#neuron_init_manager_state.start_time_stamp)/1000000]),
             ok;
         _Other_number -> 
             ok
