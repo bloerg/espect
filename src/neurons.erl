@@ -197,10 +197,10 @@ compare_helper(
                 Spectrum,
                 case binary_to_term(Neuron#neuron.bmu_to_spectrum_id) of
                     [-1, -1, -1] -> 
-                        Spectrum_vector_distance = vector_operations:vector_length(Neuron_vector_difference),
-                        case Spectrum_vector_distance < Min_spectrum_neuron_distance of
+                        Spectrum_neuron_distance = vector_operations:vector_length(Neuron_vector_difference),
+                        case Spectrum_neuron_distance < Min_spectrum_neuron_distance of
                             true -> 
-                                [Spectrum_vector_distance, Coordinates];
+                                [Spectrum_neuron_distance, Coordinates];
                             false -> [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates]
                         end;
                     _Else -> [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates]
