@@ -39,7 +39,7 @@ randomize_list2(List) ->
         [{_,B}] = ets:lookup(Input_table, J),
         ets:insert(Input_table, { J, A }),
         ets:insert(Input_table, { Index, B })
-    end, lists:seq(0, ets:info(Input_table, size)-2)),
+    end, lists:seq(0, ets:info(Input_table, size)-1)),
     Output_list  = [ randomize2_helper(ets:lookup(Input_table, Index))|| Index <- lists:seq(0, ets:info(Input_table, size)-1)],
     ets:delete(Input_table),
     Output_list.
