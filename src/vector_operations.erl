@@ -54,7 +54,11 @@ scalar_multiplication(_, [], Output_vector) ->
 scalar_multiplication(Scalar, [First_element|Rest], Output_vector) ->
     scalar_multiplication(Scalar, Rest, [First_element*Scalar|Output_vector]).
 
-   
+
+% with arrays, not so fast
+vector_length_squared({array, Vector}) ->
+    array:foldl(fun(_Index, Value, Length_squared) -> Length_squared + Value*Value end, 0, Vector);
+
 %this is fast
 vector_length_squared(Vector) ->
     vector_length_squared(Vector, 0).
@@ -64,8 +68,14 @@ vector_length_squared([], Sum_squared) ->
     Sum_squared.
 
 
+vector_length({array, Vector}) ->
+    math:sqrt(vector_length_squared({array, Vector}));
 vector_length(Vector) ->
     math:sqrt(vector_length_squared(Vector)).
+
+
+
+
 
 %this is slow
 vector_length2(Vector) ->
