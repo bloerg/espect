@@ -186,7 +186,7 @@ compare_helper(
             [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates];
         _Other ->
             [Neuron] = ets:lookup(Neurons_table, Coordinates),
-            Neuron_vector_difference = vector_operations:vector_difference(binary_to_term(Neuron#neuron.neuron_vector), Spectrum),
+            Neuron_vector_difference = vector_operations:vector_difference(Spectrum, binary_to_term(Neuron#neuron.neuron_vector)),
             ets:insert(Neurons_table, Neuron#neuron{
                 last_spectrum_neuron_vector_difference = Neuron_vector_difference
             }),
@@ -218,41 +218,46 @@ update_helper(
     Coordinates,
     Neuron_worker_state,
     BMU_neuron_coordinates,
-    Alpha, Two_times_sigma_squared
+    Alpha, Two_times_sigma_squared,
+    Neighbourhood_fn_radius
 ) ->
     case Coordinates of 
         '$end_of_table' ->
             ok;
         _Other ->
             
-            Neuron_BMU_coordinate_distance = vector_operations:vector_distance(Coordinates, BMU_neuron_coordinates),
-            [Neuron] = ets:lookup(Neurons_table, Coordinates),
-            ets:insert(Neurons_table, 
-                Neuron#neuron{ neuron_vector = 
-                    term_to_binary(
-                        vector_operations:vector_sum(
-                            binary_to_term(Neuron#neuron.neuron_vector),
-                            vector_operations:scalar_multiplication(
-                                %~ neighbourhood_function1(
-                                    %~ Neuron_worker_state#neuron_worker_state.iteration, 
-                                    %~ Neuron_worker_state#neuron_worker_state.max_iteration, 
-                                    %~ Neuron#neuron.neuron_coordinates, 
-                                    %~ BMU_neuron_coordinates
-                                %~ ),
-                                neighbourhood_function3(Two_times_sigma_squared, Alpha, Neuron_BMU_coordinate_distance),
-                                Neuron#neuron.last_spectrum_neuron_vector_difference
+            case (Neuron_BMU_coordinate_distance = vector_operations:vector_distance(Coordinates, BMU_neuron_coordinates) ) < Neighbourhood_fn_radius of
+                false -> ok;
+                true ->
+                    [Neuron] = ets:lookup(Neurons_table, Coordinates),
+                    ets:insert(Neurons_table, 
+                        Neuron#neuron{ neuron_vector = 
+                            term_to_binary(
+                                vector_operations:vector_sum(
+                                    binary_to_term(Neuron#neuron.neuron_vector),
+                                    vector_operations:scalar_multiplication(
+                                        %~ neighbourhood_function1(
+                                            %~ Neuron_worker_state#neuron_worker_state.iteration, 
+                                            %~ Neuron_worker_state#neuron_worker_state.max_iteration, 
+                                            %~ Neuron#neuron.neuron_coordinates, 
+                                            %~ BMU_neuron_coordinates
+                                        %~ ),
+                                            neighbourhood_function3(Two_times_sigma_squared, Alpha, Neuron_BMU_coordinate_distance),
+                                        Neuron#neuron.last_spectrum_neuron_vector_difference
+                                    )
+                                )
                             )
-                        )
+                        }
                     )
-                }
-            ),
+            end,
             update_helper(
                 Neurons_table,
                 Coordinate_table,
                 ets:next(Coordinate_table, Coordinates),
                 Neuron_worker_state,
                 BMU_neuron_coordinates,
-                Alpha, Two_times_sigma_squared
+                Alpha, Two_times_sigma_squared,
+                Neighbourhood_fn_radius
             )
     end.
 
@@ -267,6 +272,7 @@ handle_cast({compare, Spectrum_id}, [Neuron_worker_state]) ->
             Neuron_worker_state#neuron_worker_state.coordinate_table_id, 
             ets:first(Neuron_worker_state#neuron_worker_state.coordinate_table_id), 
             Spectrum, 
+            %~ [576460752303423487, []]
             [576460752303423487, []]
         ),
     %~ io:format("Compare time: ~w~n", [timer:now_diff(os:timestamp(), T1)/1000000]),
@@ -297,7 +303,8 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neuron_worker_state]) ->
         ets:first(Neuron_worker_state#neuron_worker_state.coordinate_table_id),
         Neuron_worker_state,
         BMU_neuron_coordinates,
-        Alpha, Two_times_sigma_squared
+        Alpha, Two_times_sigma_squared,
+        -Two_times_sigma_squared * math:log(Alpha_end / 100 / Alpha)
     ),
     %~ io:format("Update time: ~w~n", [timer:now_diff(os:timestamp(), T1)/1000000]),
     learning_step_manager:update_complete(self()),
@@ -402,6 +409,8 @@ handle_call({remove_neurons, Number}, _From, [Neuron_worker_state]) ->
           lists:seq(1,Number)
         ),
     {reply, Reply, [Neuron_worker_state]};
+
+
 
 handle_call(
     {set_bmu, BMU_neuron_coordinates, BMU_spectrum_id}, 
