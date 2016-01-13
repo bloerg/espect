@@ -3,7 +3,7 @@
 -export([speed_test_update_neuron/2]).
 -export([speed_test_event_handler_trigger_neuron_compare/1, speed_test_event_handler_trigger_neuron_update/1]).
 -export([speed_test_neighbourhood_function1/5, speed_test_neighbourhood_function2/5, speed_test_neighbourhood_function3/5, speed_test_neighbourhood_function4/5]).
--export([speed_test_vector_length/2, speed_test_vector_length2/2, speed_test_vector_length3/2]).
+-export([speed_test_vector_length/2, speed_test_vector_length2/2, speed_test_vector_length3/2, speed_test_vector_length4/2]).
 
 speed_test_get_neuron_spectrum_distance(Spectrum_width, Repetitions) ->
     T1 = os:timestamp(),
@@ -162,7 +162,7 @@ speed_test_vector_length2(Iterations, Vector_length) ->
 
 
 speed_test_vector_length3(Iterations, Vector_length) ->
-    Vector = lists:seq(1,Vector_length),
+    Vector = lists:seq(1000000,1000000+Vector_length),
     speed_test_vector_length3(Iterations, Iterations, Vector, os:timestamp()).
 speed_test_vector_length3(Iterations, 0 , _Vector, T1) ->
     T2 = os:timestamp(),
@@ -171,4 +171,14 @@ speed_test_vector_length3(Iterations, 0 , _Vector, T1) ->
 speed_test_vector_length3(Iterations, Iteration, Vector, T1) ->
     vector_operations:vector_length(Vector),
     speed_test_vector_length3(Iterations, Iteration - 1, Vector, T1).
-    
+
+speed_test_vector_length4(Iterations, Vector_length) ->
+    Vector = array:fix(array:from_list(lists:seq(1,Vector_length))),
+    speed_test_vector_length4(Iterations, Iterations, Vector, os:timestamp()).
+speed_test_vector_length4(Iterations, 0 , _Vector, T1) ->
+    T2 = os:timestamp(),
+    erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", vector_lengths per second: ", Iterations/timer:now_diff(T2,T1)*1000000}),
+    ok;
+speed_test_vector_length4(Iterations, Iteration, Vector, T1) ->
+    vector_operations:vector_length({array, Vector}),
+    speed_test_vector_length4(Iterations, Iteration - 1, Vector, T1).
