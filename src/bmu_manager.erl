@@ -150,7 +150,7 @@ handle_call(get_bmu, _From, BMU_manager_state) ->
     {reply, BMU_manager_state#bmu_manager_state.bmu_coordinates, BMU_manager_state};
 handle_call(get_state, _From, BMU_manager_state) ->
     {reply, BMU_manager_state, BMU_manager_state};
-    
+
 handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_distance]}, From,
     BMU_manager_state) ->
         {From_pid, _From_tag} = From,
@@ -158,8 +158,9 @@ handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_dis
             BMU_manager_state#bmu_manager_state.neurons_worker_list,
             From_pid
         ),
-        case Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance of
-            true -> 
+        %~ io:format("intermediate: ~w~n", [{From, Neuron_coordinates, Spectrum_id, Spectrum_neuron_distance}]),
+        case {Neuron_coordinates, Spectrum_neuron_distance < BMU_manager_state#bmu_manager_state.shortest_distance} of
+            {[_,_], true} -> 
                 New_bmu_manager_state = 
                     BMU_manager_state#bmu_manager_state{
                         shortest_distance = Spectrum_neuron_distance,
@@ -169,7 +170,7 @@ handle_call({intermediate, [Neuron_coordinates, Spectrum_id, Spectrum_neuron_dis
                         neuron_worker_pid_of_bmu = From_pid
 
                     };
-            false -> 
+            {_, _} -> 
                 New_bmu_manager_state = 
                     BMU_manager_state#bmu_manager_state{
                         neurons_worker_list = Neurons_worker_list_new
