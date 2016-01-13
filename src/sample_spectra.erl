@@ -1,6 +1,6 @@
 -module(sample_spectra).
--export([make_sine_spectrum/1]).
--export([make_sample_spectrum_bucket/4]).
+-export([make_sine_spectrum/1, make_binary_spectrum/1]).
+-export([make_sample_spectrum_bucket/4, make_sample_spectrum_bucket/5]).
 
 %% @author Jörg Brünecke <dev@bloerg.de>
 %% @doc sample spectrum module
@@ -28,15 +28,14 @@ make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, single_
               || X <- lists:seq(0,MaxX), Y <- lists:seq(0, MaxY)
             ]
         )
-    ;
+    .
         
 
-make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_format) 
+make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, Spectrum_generator_function, File_format) 
     when 
         is_integer(MaxX),
         is_integer(MaxY),
         is_integer(SpectrumLength),
-        MaxX == MaxY,
         SpectrumLength > 0
     ->
         lists:foreach(
@@ -49,11 +48,11 @@ make_sample_spectrum_bucket([MaxX, MaxY], BaseDirectory, SpectrumLength, File_fo
                         Output_file_plain=string:join([BaseDirectory, "/", FileName], ""),
                         ok = write_sample_spectrum_to_plain_file(
                             Output_file_plain, 
-                            make_sine_spectrum(SpectrumLength)
+                            Spectrum_generator_function(SpectrumLength)
                         );
                     binary ->
                         Output_file_binary=string:join([BaseDirectory, "/binary/", FileName], ""),
-                        Spectrum = make_sine_spectrum(SpectrumLength),
+                        Spectrum = Spectrum_generator_function(SpectrumLength), %make_sine_spectrum(SpectrumLength),
                         ok = write_sample_spectrum_to_binary_file(
                             Output_file_binary, 
                             term_to_binary([[Y*MaxX + X, X+Y, X], Spectrum])
@@ -76,7 +75,8 @@ write_sample_spectrum_to_plain_file(Filename, Spectrum) ->
 write_sample_spectrum_to_binary_file(Filename, Spectrum) ->
     file:write_file(Filename, [Spectrum]).
 
-
+make_binary_spectrum(Number_of_elements) ->
+    [ random:uniform(2) -1 || _I <- lists:seq(1, Number_of_elements)].
 
 make_sine_spectrum(NumberOfElements) ->
     A=random:uniform()*10,
