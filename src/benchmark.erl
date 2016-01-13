@@ -161,8 +161,13 @@ speed_test_vector_length2(Iterations, Vector_length) ->
     erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", vector_lengths per second: ", Iterations/timer:now_diff(T2,T1)*1000000}).
 
 
-speed_test_vector_length3(Iterations, Vector_length) ->
-    Vector = lists:seq(1000000,1000000+Vector_length),
+speed_test_vector_length3(Iterations, {Type, Vector_length}) ->
+    case Type of 
+        integer -> 
+            Vector = lists:seq(1000000,1000000+Vector_length);
+        float ->
+            Vector = [ random:uniform() || _Seq <- lists:seq(1, Vector_length) ]
+    end,
     speed_test_vector_length3(Iterations, Iterations, Vector, os:timestamp()).
 speed_test_vector_length3(Iterations, 0 , _Vector, T1) ->
     T2 = os:timestamp(),
