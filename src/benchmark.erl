@@ -174,7 +174,7 @@ speed_test_vector_length3(Iterations, 0 , _Vector, T1) ->
     erlang:display({debug, "time in microseconds: ", timer:now_diff(T2, T1), ", vector_lengths per second: ", Iterations/timer:now_diff(T2,T1)*1000000}),
     ok;
 speed_test_vector_length3(Iterations, Iteration, Vector, T1) ->
-    vector_operations:vector_length(Vector),
+    vector_operations:vector_lengthf(Vector),
     speed_test_vector_length3(Iterations, Iteration - 1, Vector, T1).
 
 speed_test_vector_length4(Iterations, Vector_length) ->
@@ -187,3 +187,4 @@ speed_test_vector_length4(Iterations, 0 , _Vector, T1) ->
 speed_test_vector_length4(Iterations, Iteration, Vector, T1) ->
     vector_operations:vector_length({array, Vector}),
     speed_test_vector_length4(Iterations, Iteration - 1, Vector, T1).
+
