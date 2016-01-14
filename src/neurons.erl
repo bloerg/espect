@@ -187,7 +187,7 @@ compare_helper(
             [Min_spectrum_neuron_distance, Min_spectrum_neuron_distance_coordinates];
         _Other ->
             [Neuron] = ets:lookup(Neurons_table, Coordinates),
-            Neuron_vector_difference = vector_operations:vector_difference(Spectrum, binary_to_term(Neuron#neuron.neuron_vector)),
+            Neuron_vector_difference = vector_operations:vector_differencef(Spectrum, binary_to_term(Neuron#neuron.neuron_vector)),
             ets:insert(Neurons_table, Neuron#neuron{
                 last_spectrum_neuron_vector_difference = Neuron_vector_difference
             }),
@@ -304,7 +304,10 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neuron_worker_state]) ->
         Neuron_worker_state,
         BMU_neuron_coordinates,
         Alpha, Two_times_sigma_squared,
-        -Two_times_sigma_squared * math:log(Alpha_end / 100 / Alpha)
+        case Iteration < 6 of 
+            true -> 576460752303423487;
+            false -> -Two_times_sigma_squared * math:log(Alpha_end / 100 / Alpha)
+        end
     ),
     %~ io:format("Update time: ~w~n", [timer:now_diff(os:timestamp(), T1)/1000000]),
     learning_step_manager:update_complete(self()),
