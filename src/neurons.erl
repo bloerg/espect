@@ -8,13 +8,13 @@
 -export([handle_info/2]).
 -export([init/1, set_neuron_indeces/2, load_spectra_to_neurons_worker/1]).
 -export([add_neurons/2, remove_neurons/2]).
--export([get_neuron_spectrum_distance/2]).
 -export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
 -export([map_dump/1]).
 
 %for testing, remove later
--export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
+%~ -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
+%~ -export([get_neuron_spectrum_distance/2]).
 
 -record(spectra, {
     spectrum_id = [-1,-1,-1], %the neuron is BMU to spectrum with id
@@ -197,7 +197,7 @@ compare_helper(
                 Spectrum,
                 case binary_to_term(Neuron#neuron.bmu_to_spectrum_id) of
                     [-1, -1, -1] -> 
-                        Spectrum_neuron_distance = vector_operations:vector_length(Neuron_vector_difference),
+                        Spectrum_neuron_distance = vector_operations:vector_lengthf(Neuron_vector_difference),
                         case Spectrum_neuron_distance < Min_spectrum_neuron_distance of
                             true -> 
                                 [Spectrum_neuron_distance, Coordinates];
@@ -272,7 +272,6 @@ handle_cast({compare, Spectrum_id}, [Neuron_worker_state]) ->
             Neuron_worker_state#neuron_worker_state.coordinate_table_id, 
             ets:first(Neuron_worker_state#neuron_worker_state.coordinate_table_id), 
             Spectrum, 
-            %~ [576460752303423487, []]
             [576460752303423487, []]
         ),
     %~ io:format("Compare time: ~w~n", [timer:now_diff(os:timestamp(), T1)/1000000]),
@@ -488,7 +487,8 @@ neighbourhood_function2(Two_times_sigma_squared, Alpha, Neuron_coordinates, BMU_
             / Two_times_sigma_squared
         )
 .
-neighbourhood_function3(Two_times_sigma_squared, Alpha, Neuron_BMU_coordinate_distance) ->
+neighbourhood_function3(Two_times_sigma_squared, Alpha, Neuron_BMU_coordinate_distance) 
+    when is_float(Two_times_sigma_squared), is_float(Alpha), is_float(Neuron_BMU_coordinate_distance) ->
         Alpha * math:exp(
             -Neuron_BMU_coordinate_distance / Two_times_sigma_squared
         )
