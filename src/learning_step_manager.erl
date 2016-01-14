@@ -92,13 +92,13 @@ update_complete(From) ->
 handle_cast(next_learning_step, State) ->
     New_timestamp = os:timestamp(),
     Time_diff = timer:now_diff(New_timestamp, State#learning_step_manager_state.learning_step_start_timestamp)/1000000,
-    io:format("Starting learning step ~w. Previous learning step took ~w seconds. Mean LS time is ~w~n", 
-        [
-         State#learning_step_manager_state.learning_step +1, 
-         Time_diff,
-         (State#learning_step_manager_state.learning_step_runtime_sum + Time_diff) / ((State#learning_step_manager_state.iteration * State#learning_step_manager_state.learning_step) +1)
-        ]
-    ),
+    %~ io:format("Starting learning step ~w. Previous learning step took ~w seconds. Mean LS time is ~w~n", 
+        %~ [
+         %~ State#learning_step_manager_state.learning_step +1, 
+         %~ Time_diff,
+         %~ (State#learning_step_manager_state.learning_step_runtime_sum + Time_diff) / ((State#learning_step_manager_state.iteration * State#learning_step_manager_state.learning_step) +1)
+        %~ ]
+    %~ ),
     case spectrum_dispatcher:next_learning_step() of
         nospectraleft -> iteration_state_server:next_iteration();
         ok -> 
