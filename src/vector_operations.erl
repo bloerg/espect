@@ -1,8 +1,8 @@
 -module(vector_operations).
--export([vector_distance_squared/2, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2, reverse_vector/1]).
+-export([vector_distance_squared/2, vector_distance/2, vector_difference/2, vector_differencef/2, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2, reverse_vector/1]).
 -export([vector_generate/2]).
--export([vector_length_squared/1, vector_length_squaredf/1, vector_lengthf/1]).
-
+-export([vector_length_squared/1, vector_length_squaredf/1, vector_lengthf/1, vector_length_squaredI/1, vector_lengthI/1]).
+-export([vector_lengthBf/1]).
 
 %% @author Jörg Brünecke <dev@bloerg.de>
 %% @doc Basic vector operations module
@@ -30,6 +30,17 @@ vector_difference([],[], Result) ->
     reverse_vector(Result);
 vector_difference([First_v1|Rest_v1], [First_v2|Rest_v2], Intermediate_result) ->
     vector_difference(Rest_v1, Rest_v2, [First_v1 - First_v2|Intermediate_result]).
+
+
+vector_differencef(Vector1, Vector2) when
+    length(Vector1) == length(Vector2), is_list(Vector1), is_list(Vector2) ->
+        vector_differencef(Vector1, Vector2, []).
+vector_differencef([],[], Result) 
+    when is_list(Result) ->
+    reverse_vector(Result);
+vector_differencef([First_v1|Rest_v1], [First_v2|Rest_v2], Intermediate_result)
+    when is_float(First_v1), is_float(First_v2), is_list(Rest_v1), is_list(Rest_v2), is_list(Intermediate_result)->
+    vector_differencef(Rest_v1, Rest_v2, [First_v1 - First_v2|Intermediate_result]).
 
 vector_sum(Vector1, Vector2) when
     length(Vector1) == length(Vector2) ->
@@ -67,6 +78,16 @@ vector_length_squared([Head| Tail], Sum_squared) ->
 vector_length_squared([], Sum_squared) ->
     Sum_squared.
     
+%this is fast
+vector_length_squaredI(Vector) 
+    when is_list(Vector) ->
+    vector_length_squaredI(Vector, 0).
+vector_length_squaredI([Head| Tail], Sum_squared)
+    when is_integer(Sum_squared), is_integer(Head) ->
+    vector_length_squaredI(Tail, Sum_squared + Head*Head);
+vector_length_squaredI([], Sum_squared) 
+    when is_integer(Sum_squared) ->
+    Sum_squared.
 
 %this is fast with floats and HIPE
 vector_length_squaredf(Vector) 
@@ -79,17 +100,41 @@ vector_length_squaredf([], Sum_squared)
     when is_float(Sum_squared)->
     Sum_squared.
 
+%vector length of a float binary
+%assumes 64 Bit floats
+vector_length_squaredBf(Vector)
+    %~ when is_binary(Vector) ->
+    %~ vector_length_squaredBf(Vector, 0.0).
+    when is_binary(Vector) ->
+    vector_length_squaredBf(Vector, byte_size(Vector) - 8, 0.0).
+
+%~ vector_length_squaredBf(<<>>, Sum_squared) ->
+    %~ Sum_squared;
+%~ vector_length_squaredBf(<<Head:64/float,Rest/binary>>, Sum_squared)
+    %~ when is_float(Head), is_binary(Rest), is_float(Sum_squared) ->
+        %~ vector_length_squaredBf(Rest, Sum_squared + Head * Head).
+vector_length_squaredBf(_Binary, -8, Sum_squared) ->
+    Sum_squared;
+vector_length_squaredBf(Vector, At, Sum_squared)
+    when is_binary(Vector), is_integer(At), is_float(Sum_squared) ->
+        <<_:At/binary, Val:64/float, _/binary>> = Vector,
+        vector_length_squaredBf(Vector, At - 8, Sum_squared + Val*Val).
+
 
 vector_length(Vector) ->
     math:sqrt(vector_length_squared(Vector)).
+
+vector_lengthI(Vector)
+    when is_list(Vector) ->
+    trunc(math:sqrt(vector_length_squared(Vector))).
 
 vector_lengthf(Vector)
     when is_list(Vector) ->
     math:sqrt(vector_length_squaredf(Vector)).
 
-
-
-
+vector_lengthBf(Vector)
+    when is_binary(Vector) ->
+    math:sqrt(vector_length_squaredBf(Vector)).
 
 %this is slow
 vector_length2(Vector) ->
