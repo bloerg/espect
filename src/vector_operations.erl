@@ -62,29 +62,29 @@ vector_length_squared({array, Vector}) ->
 %this is fast
 vector_length_squared(Vector) ->
     vector_length_squared(Vector, 0).
-vector_length_squared([Head| Tail], Sum_squared)
-    when is_integer(Head), is_integer(Sum_squared)->
+vector_length_squared([Head| Tail], Sum_squared) ->
     vector_length_squared(Tail, Sum_squared + Head*Head);
-vector_length_squared([], Sum_squared)
-when is_integer(Sum_squared)->
+vector_length_squared([], Sum_squared) ->
     Sum_squared.
     
 
-%this is fast
-vector_length_squaredf(Vector) ->
+%this is fast with floats and HIPE
+vector_length_squaredf(Vector) 
+    when is_list(Vector) ->
     vector_length_squaredf(Vector, 0.0).
 vector_length_squaredf([Head| Tail], Sum_squared)
-    when is_float(Head), is_float(Sum_squared)->
+    when is_float(Head), is_float(Sum_squared), is_list(Tail)->
     vector_length_squaredf(Tail, Sum_squared + Head*Head);
 vector_length_squaredf([], Sum_squared)
-when is_float(Sum_squared)->
+    when is_float(Sum_squared)->
     Sum_squared.
 
 
 vector_length(Vector) ->
     math:sqrt(vector_length_squared(Vector)).
 
-vector_lengthf(Vector) ->
+vector_lengthf(Vector)
+    when is_list(Vector) ->
     math:sqrt(vector_length_squaredf(Vector)).
 
 
