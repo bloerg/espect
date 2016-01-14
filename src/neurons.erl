@@ -11,10 +11,11 @@
 -export([set_bmu/3, set_iteration/2]).
 -export([update_neuron/2, update_neuron/3]).
 -export([map_dump/1]).
+-export([get_neuron_spectrum_distance/2]).
 
 %for testing, remove later
 %~ -export([alpha/4, sigma/4, neighbourhood_function1/4, neighbourhood_function2/4, neighbourhood_function3/3, neighbourhood_function4/3]).
-%~ -export([get_neuron_spectrum_distance/2]).
+
 
 -record(spectra, {
     spectrum_id = [-1,-1,-1], %the neuron is BMU to spectrum with id
@@ -294,8 +295,8 @@ handle_cast({update_neuron, BMU_neuron_coordinates}, [Neuron_worker_state]) ->
     Sigma_end = 0.0625,
     Alpha_begin = 0.25,
     Alpha_end = 0.01,
-    Two_times_sigma_squared = 2 * math:pow(neuron:sigma(Iteration, Max_iteration, Sigma_begin, Sigma_end), 2),
-    Alpha = neuron:alpha(Iteration, Max_iteration, Alpha_begin, Alpha_end),
+    Two_times_sigma_squared = 2 * math:pow(sigma(Iteration, Max_iteration, Sigma_begin, Sigma_end), 2),
+    Alpha = alpha(Iteration, Max_iteration, Alpha_begin, Alpha_end),
     update_helper(
         Neurons_table, 
         Coordinate_table, 
