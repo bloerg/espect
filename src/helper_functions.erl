@@ -1,5 +1,6 @@
 -module(helper_functions).
 -export([randomize_list/1,randomize_list2/1]).
+-export([float_list_to_binary/1]).
 
 
 randomize_list(List) ->
@@ -43,3 +44,13 @@ randomize_list2(List) ->
     Output_list  = [ randomize2_helper(ets:lookup(Input_table, Index))|| Index <- lists:seq(0, ets:info(Input_table, size)-1)],
     ets:delete(Input_table),
     Output_list.
+
+float_list_to_binary(List)
+    when is_list(List) ->
+        float_list_to_binary(List, <<>>).
+float_list_to_binary([], Binary) 
+    when is_binary(Binary) ->
+        Binary;
+float_list_to_binary([Head| Rest], Binary)
+    when is_list(Rest), is_binary(Binary), is_float(Head) ->
+        float_list_to_binary(Rest, <<Head:64/float, Binary/binary>>).
