@@ -1,7 +1,7 @@
 -module(vector_operations).
 -export([vector_distance_squared/2, vector_distance/2, vector_difference/2, vector_difference/3, vector_sum/2, vector_length/1, vector_length2/1, scalar_multiplication/2, reverse_vector/1]).
 -export([vector_generate/2]).
--export([vector_length_squared/1]).
+-export([vector_length_squared/1, vector_length_squaredf/1, vector_lengthf/1]).
 
 
 %% @author Jörg Brünecke <dev@bloerg.de>
@@ -62,16 +62,30 @@ vector_length_squared({array, Vector}) ->
 %this is fast
 vector_length_squared(Vector) ->
     vector_length_squared(Vector, 0).
-vector_length_squared([Head| Tail], Sum_squared) ->
+vector_length_squared([Head| Tail], Sum_squared)
+    when is_integer(Head), is_integer(Sum_squared)->
     vector_length_squared(Tail, Sum_squared + Head*Head);
-vector_length_squared([], Sum_squared) ->
+vector_length_squared([], Sum_squared)
+when is_integer(Sum_squared)->
+    Sum_squared.
+    
+
+%this is fast
+vector_length_squaredf(Vector) ->
+    vector_length_squaredf(Vector, 0.0).
+vector_length_squaredf([Head| Tail], Sum_squared)
+    when is_float(Head), is_float(Sum_squared)->
+    vector_length_squaredf(Tail, Sum_squared + Head*Head);
+vector_length_squaredf([], Sum_squared)
+when is_float(Sum_squared)->
     Sum_squared.
 
 
-vector_length({array, Vector}) ->
-    math:sqrt(vector_length_squared({array, Vector}));
 vector_length(Vector) ->
     math:sqrt(vector_length_squared(Vector)).
+
+vector_lengthf(Vector) ->
+    math:sqrt(vector_length_squaredf(Vector)).
 
 
 
